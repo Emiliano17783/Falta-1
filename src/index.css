@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Reset & base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: #080d08;
+  font-family: 'Barlow Condensed', sans-serif;
+  color: #c8e6c8;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100svh; background: #080d08; }
+
+/* ── Layout shell ─────────────────────────────────────────── */
+.app-shell { display: flex; min-height: 100svh; background: #080d08; }
+
+.app-sidebar {
+  position: fixed; top: 0; left: 0;
+  width: 240px; height: 100svh;
+  background: #0c130c;
+  border-right: 1px solid #1a271a;
+  display: flex; flex-direction: column;
+  z-index: 40; padding: 28px 16px;
+}
+
+.app-main { flex: 1; min-height: 100svh; overflow-y: auto; }
+
+@media (min-width: 768px) { .app-main { margin-left: 240px; } }
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Animations ───────────────────────────────────────────── */
+.animate-fade-in     { animation: fadeUp 0.3s ease-out both; }
+.animate-spin-custom { animation: spinCustom 1s linear infinite; }
+.animate-pulse-green { animation: pulseGreen 2s infinite; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spinCustom { to { transform: rotate(360deg); } }
+@keyframes pulseGreen {
+  0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
+  50%     { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+}
+
+/* ── Modal ────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(8px);
+  z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.modal-content {
+  width: 100%; max-width: 560px;
+  max-height: 92svh; overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  background: #131c13;
+  border-top: 1px solid #1a271a;
+  animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Cards ────────────────────────────────────────────────── */
+.card {
+  background: #131c13; border: 1px solid #1a271a;
+  border-radius: 16px;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.card:active { transform: scale(0.99); }
+
+/* ── Badges ───────────────────────────────────────────────── */
+.nivel-principiante { background:#052e16; color:#4ade80; border:1px solid #166534; }
+.nivel-intermedio   { background:#422006; color:#fbbf24; border:1px solid #92400e; }
+.nivel-avanzado     { background:#450a0a; color:#f87171; border:1px solid #991b1b; }
+
+/* ── Progress bar ─────────────────────────────────────────── */
+.progress-fill { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+/* ── Bottom nav — SOLO mobile ─────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #0c130c; border-top: 1px solid #1a271a;
+  z-index: 40; display: flex;
+}
+@media (min-width: 768px) { .bottom-nav { display: none; } }
+
+/* ── Grids responsive ─────────────────────────────────────── */
+.partidos-grid, .canchas-grid {
+  display: grid; grid-template-columns: 1fr; gap: 14px;
+}
+@media (min-width: 860px)  { .partidos-grid, .canchas-grid { grid-template-columns: repeat(2,1fr); } }
+@media (min-width: 1280px) { .partidos-grid, .canchas-grid { grid-template-columns: repeat(3,1fr); } }
+
+/* ── Hero banner ──────────────────────────────────────────── */
+.hero-bg {
+  background: linear-gradient(135deg, #052e16 0%, #14532d 45%, #166534 100%);
+  position: relative; overflow: hidden;
+}
+.hero-bg::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 75% 25%, rgba(74,222,128,0.12) 0%, transparent 50%),
+    radial-gradient(circle at 25% 75%, rgba(22,163,74,0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ── Sidebar nav item ─────────────────────────────────────── */
+.sidebar-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: 12px;
+  font-weight: 700; font-size: 17px; text-transform: uppercase;
+  letter-spacing: 0.05em; cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: #4d6b4d; border: none; background: transparent; width: 100%;
+  text-align: left;
+}
+.sidebar-item:hover  { background: #131c13; color: #c8e6c8; }
+.sidebar-item.active { background: #0f2d0f; color: #4ade80; }
+.sidebar-item.crear  {
+  background: #16a34a; color: white; margin-top: 8px;
+  box-shadow: 0 4px 14px rgba(22,163,74,0.4);
+}
+.sidebar-item.crear:hover { background: #15803d; }

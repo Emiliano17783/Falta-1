@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuarios: solo el propio usuario puede leer/escribir su perfil
+    match /usuarios/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Partidos: cualquier usuario autenticado puede leer
+    // Solo el creador puede modificar (excepto jugadores/anotados)
+    match /partidos/{partidoId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.creadoPor ||
+        // Permite a cualquier usuario anotarse (modificar jugadores y jugadoresAnotados)
+        (request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['jugadores', 'jugadoresAnotados']))
+      );
+      allow delete: if request.auth != null && request.auth.uid == resource.data.creadoPor;
+    }
+
+    // Reservas: el usuario solo puede leer/escribir sus propias reservas
+    match /reservas/{reservaId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.uid ||
+        // Las Cloud Functions pueden actualizar el estado de la reserva
+        false
+      );
+    }
+
+    // Pagos: solo lectura para el propio usuario
+    match /pagos/{pagoId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow write: if false; // Solo las Cloud Functions pueden escribir pagos
+    }
+  }
+}

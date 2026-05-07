@@ -1,0 +1,47 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "partidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activo", "order": "ASCENDING" },
+        { "fieldPath": "fechaHora", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "partidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "activo", "order": "ASCENDING" },
+        { "fieldPath": "modalidad", "order": "ASCENDING" },
+        { "fieldPath": "fechaHora", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "partidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "jugadores", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "fechaHora", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reservas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "reservas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "canchaId", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
