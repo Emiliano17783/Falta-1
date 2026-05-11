@@ -1,21 +1,26 @@
 import { useState, useEffect } from 'react';
-import { suscribirPartidos } from '../firebase/firestore';
+import { suscribirPartidos, anotarseAPartido, desanotarseDePartido } from '../firebase/firestore';
 import { PARTIDOS_DEMO, NIVEL_CONFIG } from '../data/partidos';
 import { BARRIOS_MONTEVIDEO } from '../data/canchas';
-import PaymentModal from '../modals/PaymentModal';
+import ChatModal from '../modals/ChatModal';
 import { useAuth } from '../context/AuthContext';
 
 const MODALIDADES = ['Todos', 'F5', 'F7'];
 const NIVELES_F = ['Todos', 'Principiante', 'Intermedio', 'Avanzado'];
 
 export default function HomeScreen({ setTab }) {
-  const { user } = useAuth();
+  const { user, perfil } = useAuth();
   const [partidos, setPartidos] = useState([]);
   const [modalidad, setModalidad] = useState('Todos');
   const [nivel, setNivel] = useState('Todos');
   const [barrio, setBarrio] = useState('Todos');
-  const [seleccionado, setSeleccionado] = useState(null);
+  const [chatPartido, setChatPartido] = useState(null);
   const [cargando, setCargando] = useState(true);
+
+  // Verificar si el usuario está penalizado/baneado
+  const estaBaneado = perfil?.bloqueado || (
+    perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
+  );
 
   useEffect(() => {
     try {
@@ -45,6 +50,31 @@ export default function HomeScreen({ setTab }) {
   return (
     <div className="min-h-svh bg-f-bg">
 
+      {/* Banner de penalización */}
+      {estaBaneado && (
+        <div className="bg-red-950 border-b border-red-800 px-6 py-3 flex items-center gap-3">
+          <span className="text-red-400 text-xl flex-shrink-0">🚫</span>
+          <div>
+            <p className="text-red-300 font-bold text-sm">
+              {perfil?.bloqueado
+                ? 'Cuenta suspendida permanentemente por incumplimiento reiterado.'
+                : `Suspendido hasta el ${new Date(perfil.penalizacionHasta).toLocaleDateString('es-UY')}. No podés anotarte a partidos.`
+              }
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner de advertencia */}
+      {perfil?.advertencia && !estaBaneado && (
+        <div className="bg-yellow-950 border-b border-yellow-800 px-6 py-3 flex items-center gap-3">
+          <span className="text-yellow-400 text-xl flex-shrink-0">⚠️</span>
+          <p className="text-yellow-300 text-sm font-medium">
+            Advertencia: faltaste a un partido sin avisar con 2 horas de anticipación. Una vez más y serás suspendido por 1 mes.
+          </p>
+        </div>
+      )}
+
       {/* HERO */}
       <div className="hero-bg">
         <div className="relative z-10 px-6 md:px-12 pt-10 pb-10">
@@ -70,7 +100,6 @@ export default function HomeScreen({ setTab }) {
             CREAR PARTIDO
           </button>
         </div>
-        {/* Decoración campo */}
         <svg className="absolute right-0 bottom-0 opacity-[0.07] h-56 md:h-72 pointer-events-none"
              viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="100" cy="100" r="90" stroke="white" strokeWidth="3"/>
@@ -140,14 +169,17 @@ export default function HomeScreen({ setTab }) {
         ) : (
           <div className="partidos-grid">
             {filtrados.map(p => (
-              <PartidoCard key={p.id} partido={p} onAnotarse={() => setSeleccionado(p)} />
+              <PartidoCard key={p.id} partido={p}
+                uid={user?.uid}
+                baneado={estaBaneado}
+                onChat={() => setChatPartido(p)} />
             ))}
           </div>
         )}
       </div>
 
-      {seleccionado && (
-        <PaymentModal partido={seleccionado} onClose={() => setSeleccionado(null)} onExito={() => setSeleccionado(null)} />
+      {chatPartido && (
+        <ChatModal partido={chatPartido} onClose={() => setChatPartido(null)} />
       )}
     </div>
   );
@@ -168,25 +200,60 @@ function StatChip({ valor, label, onClick, clickable }) {
   );
 }
 
-function PartidoCard({ partido, onAnotarse }) {
+function PartidoCard({ partido, uid, baneado, onChat }) {
+  const nivelCfg = NIVEL_CONFIG[partido.nivel] || NIVEL_CONFIG.Intermedio;
   const nivelKey = partido.nivel?.toLowerCase().includes('prin') ? 'principiante'
     : partido.nivel?.toLowerCase().includes('inter') ? 'intermedio' : 'avanzado';
-  const nivelCfg = NIVEL_CONFIG[partido.nivel] || NIVEL_CONFIG.Intermedio;
+
+  const jugadores = partido.jugadores || [];
+  const estaAnotado = uid && jugadores.includes(uid);
   const pct = Math.min(100, Math.round((partido.jugadoresAnotados / partido.cupoTotal) * 100));
-  const lleno = pct >= 100;
+  const lleno = partido.estado === 'lleno' || pct >= 100;
   const casiFull = pct >= 80 && !lleno;
+
+  const [accion, setAccion] = useState(null); // null | 'anotando' | 'saliendo' | 'error'
+  const [mensajeError, setMensajeError] = useState('');
 
   const fecha = new Date(partido.fechaHora);
   const hoy = new Date();
-  const esMañana = fecha.toDateString() === new Date(Date.now()+86400000).toDateString();
   const diaLabel = fecha.toDateString() === hoy.toDateString() ? 'Hoy'
-    : esMañana ? 'Mañana'
+    : fecha.toDateString() === new Date(Date.now()+86400000).toDateString() ? 'Mañana'
     : fecha.toLocaleDateString('es-UY', { weekday:'short', day:'numeric', month:'short' });
   const hora = fecha.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' });
 
+  const handleAnotarse = async () => {
+    if (!uid || accion) return;
+    setAccion('anotando');
+    setMensajeError('');
+    try {
+      await anotarseAPartido(partido.id, uid);
+    } catch (err) {
+      setMensajeError(err.message);
+      setAccion('error');
+      setTimeout(() => setAccion(null), 3000);
+    } finally {
+      if (accion !== 'error') setAccion(null);
+    }
+  };
+
+  const handleSalirse = async () => {
+    if (!uid || accion) return;
+    setAccion('saliendo');
+    setMensajeError('');
+    try {
+      await desanotarseDePartido(partido.id, uid);
+    } catch (err) {
+      setMensajeError(err.message);
+      setAccion('error');
+      setTimeout(() => setAccion(null), 3000);
+    } finally {
+      if (accion !== 'error') setAccion(null);
+    }
+  };
+
   return (
-    <div className="card animate-fade-in flex flex-col overflow-hidden group">
-      {/* Stripe top */}
+    <div className={`card animate-fade-in flex flex-col overflow-hidden group
+                     ${estaAnotado ? 'ring-1 ring-f-green/40' : ''}`}>
       <div className="h-1.5 w-full" style={{ background: nivelCfg.color }} />
 
       <div className="p-5 flex flex-col flex-1">
@@ -195,6 +262,11 @@ function PartidoCard({ partido, onAnotarse }) {
           <div className="flex-1 mr-3">
             <p className="text-white text-xl font-black uppercase leading-tight">{partido.nombreCancha}</p>
             <p className="text-f-muted text-sm mt-0.5">📍 {partido.barrio}</p>
+            {estaAnotado && (
+              <span className="inline-block mt-1 bg-green-950 border border-f-green/40 text-f-accent text-xs font-bold px-2 py-0.5 rounded-md">
+                ✓ Estás anotado
+              </span>
+            )}
           </div>
           <span className={`nivel-${nivelKey} px-2.5 py-1 rounded-lg text-xs font-black uppercase flex-shrink-0`}>
             {partido.nivel}
@@ -225,31 +297,61 @@ function PartidoCard({ partido, onAnotarse }) {
         </div>
 
         {/* Barra jugadores */}
-        <div className="mb-5">
+        <div className="mb-4">
           <div className="flex justify-between text-xs font-bold mb-1.5">
             <span className="text-f-muted">{partido.jugadoresAnotados} / {partido.cupoTotal} jugadores</span>
             <span style={{ color: lleno ? '#ef4444' : casiFull ? '#f97316' : '#4ade80' }}>{pct}%</span>
           </div>
           <div className="w-full h-2 bg-f-surface rounded-full overflow-hidden">
-            <div className="h-full rounded-full progress-fill"
+            <div className="h-full rounded-full transition-all duration-500"
                  style={{ width: `${pct}%`, background: lleno ? '#ef4444' : casiFull ? '#f97316' : '#16a34a' }} />
           </div>
         </div>
 
-        {/* Footer precio + botón */}
-        <div className="flex items-center justify-between mt-auto">
-          <div>
+        {/* Error temporal */}
+        {accion === 'error' && mensajeError && (
+          <p className="text-red-400 text-xs mb-3 text-center">{mensajeError}</p>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between mt-auto gap-2">
+          <div className="flex-shrink-0">
             <span className="text-f-accent text-3xl font-black">
-              ${partido.precioPorJugador.toLocaleString('es-UY')}
+              ${partido.precioPorJugador?.toLocaleString('es-UY') ?? '0'}
             </span>
             <span className="text-f-muted text-sm"> /jug</span>
           </div>
-          <button onClick={onAnotarse} disabled={lleno}
-            className={`px-5 py-2.5 rounded-xl font-black text-sm uppercase transition-all active:scale-95
-                        ${lleno ? 'bg-f-border text-f-muted cursor-not-allowed' : 'bg-f-green text-white'}`}
-            style={!lleno ? { boxShadow: '0 4px 14px rgba(22,163,74,0.4)' } : {}}>
-            {lleno ? 'LLENO' : '¡ME ANOTO!'}
-          </button>
+
+          <div className="flex gap-2">
+            {/* Botón chat — siempre visible si el usuario está anotado */}
+            {estaAnotado && (
+              <button onClick={onChat}
+                className="px-3 py-2.5 rounded-xl border border-f-border text-f-muted
+                           font-bold text-sm active:scale-95 transition-all hover:border-f-accent hover:text-f-accent">
+                💬
+              </button>
+            )}
+
+            {/* Botón principal */}
+            {estaAnotado ? (
+              <button onClick={handleSalirse}
+                disabled={accion === 'saliendo'}
+                className="px-4 py-2.5 rounded-xl font-black text-sm uppercase transition-all active:scale-95
+                           border border-red-800 text-red-400 hover:bg-red-950 disabled:opacity-50">
+                {accion === 'saliendo' ? '...' : 'Salirme'}
+              </button>
+            ) : (
+              <button onClick={handleAnotarse}
+                disabled={lleno || baneado || accion === 'anotando'}
+                className={`px-5 py-2.5 rounded-xl font-black text-sm uppercase transition-all active:scale-95
+                            ${lleno || baneado
+                              ? 'bg-f-border text-f-muted cursor-not-allowed'
+                              : 'bg-f-green text-white'}`}
+                style={!lleno && !baneado ? { boxShadow: '0 4px 14px rgba(22,163,74,0.4)' } : {}}>
+                {accion === 'anotando' ? '...' : lleno ? 'LLENO' : baneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

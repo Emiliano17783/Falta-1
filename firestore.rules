@@ -2,41 +2,53 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Usuarios: solo el propio usuario puede leer/escribir su perfil
+    // ── Usuarios ──────────────────────────────────────────────────────────────
     match /usuarios/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      // El propio usuario puede editar su perfil, pero no puede cambiarse admin a sí mismo
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['admin', 'bloqueado', 'noShows', 'penalizacionHasta']);
     }
 
-    // Partidos: cualquier usuario autenticado puede leer
-    // Solo el creador puede modificar (excepto jugadores/anotados)
+    // ── Partidos ──────────────────────────────────────────────────────────────
     match /partidos/{partidoId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
+      // El creador puede modificar todo; cualquier usuario puede anotarse/salirse
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.creadoPor ||
-        // Permite a cualquier usuario anotarse (modificar jugadores y jugadoresAnotados)
-        (request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['jugadores', 'jugadoresAnotados']))
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['jugadores', 'jugadoresAnotados', 'activo', 'estado'])
       );
       allow delete: if request.auth != null && request.auth.uid == resource.data.creadoPor;
+
+      // ── Mensajes del partido (chat) ────────────────────────────────────────
+      match /mensajes/{mensajeId} {
+        // Solo pueden leer/escribir los jugadores anotados al partido
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/partidos/$(partidoId)).data.jugadores;
+        allow create: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/partidos/$(partidoId)).data.jugadores
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.texto is string
+          && request.resource.data.texto.size() > 0
+          && request.resource.data.texto.size() <= 500;
+        allow update, delete: if false;
+      }
     }
 
-    // Reservas: el usuario solo puede leer/escribir sus propias reservas
+    // ── Reservas ──────────────────────────────────────────────────────────────
     match /reservas/{reservaId} {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.uid ||
-        // Las Cloud Functions pueden actualizar el estado de la reserva
-        false
-      );
+      allow update: if request.auth != null && request.auth.uid == resource.data.uid;
     }
 
-    // Pagos: solo lectura para el propio usuario
+    // ── Pagos ─────────────────────────────────────────────────────────────────
     match /pagos/{pagoId} {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
-      allow write: if false; // Solo las Cloud Functions pueden escribir pagos
+      allow write: if false;
     }
   }
 }

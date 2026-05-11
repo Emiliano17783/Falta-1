@@ -32,7 +32,7 @@ const HISTORIAL_DEMO = [
   { cancha: 'Enfoque Deportivo', fecha: '10 abril', resultado: 'Asistió ✅' },
 ];
 
-export default function PerfilScreen() {
+export default function PerfilScreen({ setTab }) {
   const { user, perfil, logout, refrescarPerfil } = useAuth();
   const [editando, setEditando] = useState(false);
   const [posicion, setPosicion] = useState(perfil?.posicion || 'Mediocampista');
@@ -267,6 +267,17 @@ export default function PerfilScreen() {
             ))}
           </div>
         </div>
+
+        {/* Panel admin (solo para admins) */}
+        {perfil?.admin && (
+          <button
+            onClick={() => setTab('admin')}
+            className="w-full border border-purple-700 text-purple-400 font-bold text-lg uppercase
+                       py-3.5 rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-2"
+          >
+            🛡️ Panel de Administración
+          </button>
+        )}
 
         {/* Cerrar sesión */}
         <button

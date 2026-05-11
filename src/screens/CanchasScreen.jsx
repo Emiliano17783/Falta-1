@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { CANCHAS } from '../data/canchas';
-import ReservaModal from '../modals/ReservaModal';
 
 const SERVS = {
   'Vestuarios':     { icon: '🚿' },
@@ -11,7 +10,6 @@ const SERVS = {
 };
 
 export default function CanchasScreen({ onCrearPartido }) {
-  const [canchaSeleccionada, setCanchaSeleccionada] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtroMod, setFiltroMod] = useState('Todos');
   const [filtroTipo, setFiltroTipo] = useState('Todos');
@@ -33,7 +31,7 @@ export default function CanchasScreen({ onCrearPartido }) {
           Canchas
         </h1>
         <p className="text-f-muted text-base mb-5">
-          {filtradas.length} canchas disponibles en Montevideo
+          {filtradas.length} canchas disponibles en Montevideo — contacto directo por WhatsApp
         </p>
 
         {/* Búsqueda */}
@@ -81,22 +79,17 @@ export default function CanchasScreen({ onCrearPartido }) {
         ) : (
           <div className="canchas-grid">
             {filtradas.map(c => (
-              <CanchaCard key={c.id} cancha={c} onReservar={() => setCanchaSeleccionada(c)} />
+              <CanchaCard key={c.id} cancha={c}
+                onCrearPartido={() => onCrearPartido?.(c)} />
             ))}
           </div>
         )}
       </div>
-
-      {canchaSeleccionada && (
-        <ReservaModal cancha={canchaSeleccionada}
-          onClose={() => setCanchaSeleccionada(null)}
-          onCrearPartido={cancha => { setCanchaSeleccionada(null); onCrearPartido?.(cancha); }} />
-      )}
     </div>
   );
 }
 
-function CanchaCard({ cancha, onReservar }) {
+function CanchaCard({ cancha, onCrearPartido }) {
   const [expandido, setExpandido] = useState(false);
 
   const ratingStars = n => Array.from({length:5}).map((_,i) => (
@@ -105,6 +98,10 @@ function CanchaCard({ cancha, onReservar }) {
 
   const precioColor = cancha.precioPorHora >= 2800 ? '#f87171'
     : cancha.precioPorHora >= 2000 ? '#fbbf24' : '#4ade80';
+
+  const waUrl = cancha.whatsapp
+    ? `https://wa.me/${cancha.whatsapp}?text=${encodeURIComponent(`Hola! Vi su cancha en Falta1 y me gustaría reservar. ¿Tienen disponibilidad?`)}`
+    : null;
 
   return (
     <div className="card animate-fade-in flex flex-col overflow-hidden">
@@ -172,20 +169,45 @@ function CanchaCard({ cancha, onReservar }) {
         )}
 
         {/* Botones */}
-        <div className="flex gap-2">
-          <button onClick={() => setExpandido(!expandido)}
-            className="flex-1 border border-f-border text-f-muted font-bold text-sm uppercase
-                       py-2.5 rounded-xl transition-all hover:border-f-text hover:text-f-text active:scale-95">
-            {expandido ? 'Ocultar' : 'Ver servicios'}
-          </button>
-          <button onClick={onReservar}
-            className="flex-1 bg-f-green text-white font-black text-sm uppercase
-                       py-2.5 rounded-xl active:scale-95 transition-transform"
-            style={{ boxShadow: '0 4px 12px rgba(22,163,74,0.4)' }}>
-            RESERVAR
-          </button>
+        <div className="flex flex-col gap-2">
+          {/* Fila 1: servicios + crear partido */}
+          <div className="flex gap-2">
+            <button onClick={() => setExpandido(!expandido)}
+              className="flex-1 border border-f-border text-f-muted font-bold text-sm uppercase
+                         py-2.5 rounded-xl transition-all hover:border-f-text hover:text-f-text active:scale-95">
+              {expandido ? 'Ocultar' : 'Ver más'}
+            </button>
+            <button onClick={onCrearPartido}
+              className="flex-1 border border-f-green text-f-accent font-black text-sm uppercase
+                         py-2.5 rounded-xl active:scale-95 transition-transform">
+              + Partido
+            </button>
+          </div>
+
+          {/* Fila 2: WhatsApp */}
+          {waUrl ? (
+            <a href={waUrl} target="_blank" rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm uppercase
+                         active:scale-95 transition-transform text-white"
+              style={{ background: '#25D366', boxShadow: '0 4px 12px rgba(37,211,102,0.4)' }}>
+              <WhatsAppIcon />
+              CONTACTAR POR WHATSAPP
+            </a>
+          ) : (
+            <div className="w-full text-center text-f-muted text-sm py-2">
+              Sin contacto disponible
+            </div>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+    </svg>
   );
 }

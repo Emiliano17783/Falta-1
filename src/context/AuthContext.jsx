@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged, signInWithPopup, signOut,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
+} from 'firebase/auth';
 import { auth, googleProvider } from '../firebase/config';
 import { crearOActualizarUsuario, obtenerUsuario } from '../firebase/firestore';
 
@@ -45,6 +48,19 @@ export function AuthProvider({ children }) {
     return result.user;
   };
 
+  const registrarConEmail = async (nombre, email, password) => {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(result.user, { displayName: nombre });
+    // Force refresh so onAuthStateChanged picks up displayName
+    await crearOActualizarUsuario({ ...result.user, displayName: nombre });
+    return result.user;
+  };
+
+  const loginConEmail = async (email, password) => {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    return result.user;
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
@@ -57,7 +73,11 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, loginConGoogle, logout, refrescarPerfil }}>
+    <AuthContext.Provider value={{
+      user, perfil, loading,
+      loginConGoogle, registrarConEmail, loginConEmail,
+      logout, refrescarPerfil,
+    }}>
       {children}
     </AuthContext.Provider>
   );

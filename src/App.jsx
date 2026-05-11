@@ -5,6 +5,7 @@ import HomeScreen from './screens/HomeScreen';
 import CanchasScreen from './screens/CanchasScreen';
 import CrearScreen from './screens/CrearScreen';
 import PerfilScreen from './screens/PerfilScreen';
+import AdminScreen from './screens/AdminScreen';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 
@@ -17,7 +18,8 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-svh bg-f-bg font-barlow">
         <div className="flex flex-col items-center gap-5">
-          <div className="w-24 h-24 rounded-3xl bg-f-green flex items-center justify-center" style={{boxShadow:'0 4px 24px rgba(22,163,74,0.5)'}}>
+          <div className="w-24 h-24 rounded-3xl bg-f-green flex items-center justify-center"
+               style={{boxShadow:'0 4px 24px rgba(22,163,74,0.5)'}}>
             <span className="text-6xl">⚽</span>
           </div>
           <div className="w-8 h-8 border-4 border-f-border border-t-f-green rounded-full animate-spin-custom" />
@@ -38,7 +40,8 @@ export default function App() {
       case 'inicio':  return <HomeScreen setTab={changeTab} />;
       case 'canchas': return <CanchasScreen onCrearPartido={(c) => { setCanchaParaPartido(c); setTab('crear'); }} />;
       case 'crear':   return <CrearScreen canchaPreseleccionada={canchaParaPartido} setTab={changeTab} />;
-      case 'perfil':  return <PerfilScreen />;
+      case 'perfil':  return <PerfilScreen setTab={changeTab} />;
+      case 'admin':   return <AdminScreen setTab={changeTab} />;
       default:        return <HomeScreen setTab={changeTab} />;
     }
   };
