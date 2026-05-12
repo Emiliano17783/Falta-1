@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { CANCHAS } from '../data/canchas';
+import { useState, useEffect } from 'react';
+import { CANCHAS as CANCHAS_STATIC } from '../data/canchas';
+import { suscribirCanchas } from '../firebase/firestore';
 
 const SERVS = {
   'Vestuarios':     { icon: '🚿' },
@@ -10,11 +11,19 @@ const SERVS = {
 };
 
 export default function CanchasScreen({ onCrearPartido }) {
+  const [canchas, setCanchas] = useState(CANCHAS_STATIC);
   const [busqueda, setBusqueda] = useState('');
   const [filtroMod, setFiltroMod] = useState('Todos');
   const [filtroTipo, setFiltroTipo] = useState('Todos');
 
-  const filtradas = CANCHAS.filter(c => {
+  useEffect(() => {
+    const unsub = suscribirCanchas((data) => {
+      setCanchas(data.length > 0 ? data : CANCHAS_STATIC);
+    });
+    return unsub;
+  }, []);
+
+  const filtradas = canchas.filter(c => {
     if (busqueda && !c.nombre.toLowerCase().includes(busqueda.toLowerCase()) &&
         !c.barrio.toLowerCase().includes(busqueda.toLowerCase())) return false;
     if (filtroMod !== 'Todos' && !c.modalidades.includes(filtroMod)) return false;

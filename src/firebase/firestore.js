@@ -6,6 +6,42 @@ import {
 } from 'firebase/firestore';
 import { db } from './config';
 
+// ─── CANCHAS ─────────────────────────────────────────────────────────────────
+
+export function suscribirCanchas(callback) {
+  const q = query(collection(db, 'canchas'), orderBy('nombre'));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+export async function crearCancha(datos) {
+  const ref = await addDoc(collection(db, 'canchas'), {
+    ...datos,
+    creadoEn: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function actualizarCancha(id, datos) {
+  await updateDoc(doc(db, 'canchas', id), datos);
+}
+
+export async function eliminarCancha(id) {
+  await deleteDoc(doc(db, 'canchas', id));
+}
+
+// Carga inicial de las 14 canchas (solo si la colección está vacía)
+export async function seedCanchas(canchas) {
+  const snap = await getDocs(collection(db, 'canchas'));
+  if (!snap.empty) return 'ya_existe';
+  for (const c of canchas) {
+    const { id: _id, ...datos } = c;
+    await addDoc(collection(db, 'canchas'), datos);
+  }
+  return 'ok';
+}
+
 // ─── USUARIOS ───────────────────────────────────────────────────────────────
 
 export async function crearOActualizarUsuario(user) {
