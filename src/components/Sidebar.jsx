@@ -13,12 +13,12 @@ export default function Sidebar({ tab, setTab }) {
     <aside className="app-sidebar hidden md:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 mb-10 px-2">
-        <div className="w-10 h-10 rounded-xl bg-f-green flex items-center justify-center flex-shrink-0"
-             style={{boxShadow:'0 4px 12px rgba(22,163,74,0.5)'}}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+             style={{ background:'rgba(196,245,75,0.1)', border:'1px solid rgba(196,245,75,0.2)', boxShadow:'0 4px 20px rgba(196,245,75,0.15)' }}>
           <span className="text-2xl">⚽</span>
         </div>
         <div>
-          <p className="text-white text-2xl font-black uppercase leading-none tracking-wide">FALTA 1</p>
+          <p className="text-f-text text-2xl font-black uppercase leading-none tracking-tight">FALTA 1</p>
           <p className="text-f-muted text-xs font-medium uppercase tracking-widest">Mvd, Uruguay</p>
         </div>
       </div>

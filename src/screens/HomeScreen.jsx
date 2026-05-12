@@ -186,16 +186,17 @@ export default function HomeScreen({ setTab }) {
 }
 
 function StatChip({ valor, label, onClick, clickable }) {
-  const cls = "flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-xl px-4 py-2 border border-white/10";
+  const cls = "flex items-center gap-2 rounded-xl px-4 py-2.5 border border-white/8"
+    + " bg-white/[0.04] backdrop-blur-sm";
   return clickable ? (
     <button onClick={onClick} className={`${cls} active:scale-95 transition-transform`}>
       <span className="text-f-accent text-2xl font-black">{valor}</span>
-      <span className="text-green-200 text-sm font-medium">{label} →</span>
+      <span className="text-f-text/70 text-sm font-medium">{label} →</span>
     </button>
   ) : (
     <div className={cls}>
       <span className="text-f-accent text-2xl font-black">{valor}</span>
-      <span className="text-green-200 text-sm font-medium">{label}</span>
+      <span className="text-f-text/70 text-sm font-medium">{label}</span>
     </div>
   );
 }
@@ -207,147 +208,163 @@ function PartidoCard({ partido, uid, baneado, onChat }) {
 
   const jugadores = partido.jugadores || [];
   const estaAnotado = uid && jugadores.includes(uid);
-  const pct = Math.min(100, Math.round((partido.jugadoresAnotados / partido.cupoTotal) * 100));
+  const anotados = partido.jugadoresAnotados ?? 0;
+  const cupo = partido.cupoTotal ?? 10;
+  const pct = Math.min(100, Math.round((anotados / cupo) * 100));
   const lleno = partido.estado === 'lleno' || pct >= 100;
-  const casiFull = pct >= 80 && !lleno;
+  const casiFull = pct >= 75 && !lleno;
+  const libres = cupo - anotados;
 
-  const [accion, setAccion] = useState(null); // null | 'anotando' | 'saliendo' | 'error'
+  const [accion, setAccion] = useState(null);
   const [mensajeError, setMensajeError] = useState('');
 
   const fecha = new Date(partido.fechaHora);
   const hoy = new Date();
-  const diaLabel = fecha.toDateString() === hoy.toDateString() ? 'Hoy'
-    : fecha.toDateString() === new Date(Date.now()+86400000).toDateString() ? 'Mañana'
-    : fecha.toLocaleDateString('es-UY', { weekday:'short', day:'numeric', month:'short' });
+  const diaLabel = fecha.toDateString() === hoy.toDateString() ? 'HOY'
+    : fecha.toDateString() === new Date(Date.now()+86400000).toDateString() ? 'MAÑANA'
+    : fecha.toLocaleDateString('es-UY', { weekday:'short', day:'numeric', month:'short' }).toUpperCase();
   const hora = fecha.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' });
+
+  const barColor = lleno ? '#ef4444' : casiFull ? '#f97316' : '#c4f54b';
 
   const handleAnotarse = async () => {
     if (!uid || accion) return;
-    setAccion('anotando');
-    setMensajeError('');
+    setAccion('anotando'); setMensajeError('');
     try {
       await anotarseAPartido(partido.id, uid);
+      setAccion(null);
     } catch (err) {
-      setMensajeError(err.message);
-      setAccion('error');
+      setMensajeError(err.message); setAccion('error');
       setTimeout(() => setAccion(null), 3000);
-    } finally {
-      if (accion !== 'error') setAccion(null);
     }
   };
 
   const handleSalirse = async () => {
     if (!uid || accion) return;
-    setAccion('saliendo');
-    setMensajeError('');
+    setAccion('saliendo'); setMensajeError('');
     try {
       await desanotarseDePartido(partido.id, uid);
+      setAccion(null);
     } catch (err) {
-      setMensajeError(err.message);
-      setAccion('error');
+      setMensajeError(err.message); setAccion('error');
       setTimeout(() => setAccion(null), 3000);
-    } finally {
-      if (accion !== 'error') setAccion(null);
     }
   };
 
   return (
-    <div className={`card animate-fade-in flex flex-col overflow-hidden group
-                     ${estaAnotado ? 'ring-1 ring-f-green/40' : ''}`}>
-      <div className="h-1.5 w-full" style={{ background: nivelCfg.color }} />
+    <div className={`card animate-fade-in flex flex-col overflow-hidden
+                     ${estaAnotado ? '' : ''}`}
+         style={estaAnotado ? { borderColor: 'rgba(196,245,75,0.2)', boxShadow: '0 0 0 1px rgba(196,245,75,0.06), 0 8px 32px rgba(0,0,0,0.5)' } : {}}>
 
-      <div className="p-5 flex flex-col flex-1">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1 mr-3">
-            <p className="text-white text-xl font-black uppercase leading-tight">{partido.nombreCancha}</p>
-            <p className="text-f-muted text-sm mt-0.5">📍 {partido.barrio}</p>
-            {estaAnotado && (
-              <span className="inline-block mt-1 bg-green-950 border border-f-green/40 text-f-accent text-xs font-bold px-2 py-0.5 rounded-md">
-                ✓ Estás anotado
-              </span>
-            )}
+      {/* Top stripe de nivel */}
+      <div className="h-1 w-full" style={{ background: nivelCfg.color }} />
+
+      <div className="p-5 flex flex-col flex-1 gap-4">
+
+        {/* ── Fila 1: Cancha + nivel badge ── */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-f-text text-lg font-black leading-tight truncate">{partido.nombreCancha}</p>
+            <p className="text-f-muted text-xs mt-0.5 font-medium">📍 {partido.barrio}</p>
           </div>
           <span className={`nivel-${nivelKey} px-2.5 py-1 rounded-lg text-xs font-black uppercase flex-shrink-0`}>
             {partido.nivel}
           </span>
         </div>
 
-        {/* Fecha/hora + modalidad */}
-        <div className="flex items-stretch gap-3 mb-4">
-          <div className="flex flex-col items-center justify-center bg-f-surface rounded-xl px-4 py-2.5 flex-shrink-0">
-            <span className="text-f-accent text-xs font-bold uppercase tracking-wide">{diaLabel}</span>
-            <span className="text-white text-2xl font-black leading-tight">{hora}</span>
+        {/* ── Fila 2: Fecha/hora prominente ── */}
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl px-5 py-3 flex flex-col items-center flex-shrink-0"
+               style={{ background: estaAnotado ? 'rgba(196,245,75,0.08)' : 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${estaAnotado ? 'rgba(196,245,75,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+            <span className="text-xs font-black tracking-widest"
+                  style={{ color: estaAnotado ? '#c4f54b' : '#5a5a5a' }}>{diaLabel}</span>
+            <span className="text-f-text text-3xl font-black leading-tight">{hora}</span>
+            <span className="text-f-muted text-xs font-medium">hs</span>
           </div>
-          <div className="flex flex-col justify-center gap-1.5">
-            <span className="bg-f-surface border border-f-border px-2.5 py-1 rounded-lg text-f-text text-xs font-bold inline-block w-fit">
-              {partido.modalidad === 'F5' ? '⚽ Fútbol 5' : '⚽ Fútbol 7'}
+          <div className="flex flex-col gap-1.5">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f2f5eb' }}>
+              ⚽ {partido.modalidad === 'F5' ? 'Fútbol 5' : 'Fútbol 7'}
             </span>
-            {casiFull && (
-              <span className="bg-orange-950 border border-orange-800 text-orange-400 px-2.5 py-1 rounded-lg text-xs font-bold w-fit animate-pulse">
-                ¡Casi lleno!
+            {estaAnotado && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black"
+                    style={{ background: 'rgba(196,245,75,0.1)', border: '1px solid rgba(196,245,75,0.25)', color: '#c4f54b' }}>
+                ✓ Estás anotado
+              </span>
+            )}
+            {casiFull && !estaAnotado && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black animate-pulse"
+                    style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#f97316' }}>
+                ¡Solo {libres} lugar{libres !== 1 ? 'es' : ''}!
               </span>
             )}
             {lleno && (
-              <span className="bg-red-950 border border-red-800 text-red-400 px-2.5 py-1 rounded-lg text-xs font-bold w-fit">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black"
+                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                 LLENO
               </span>
             )}
           </div>
         </div>
 
-        {/* Barra jugadores */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs font-bold mb-1.5">
-            <span className="text-f-muted">{partido.jugadoresAnotados} / {partido.cupoTotal} jugadores</span>
-            <span style={{ color: lleno ? '#ef4444' : casiFull ? '#f97316' : '#4ade80' }}>{pct}%</span>
+        {/* ── Fila 3: Jugadores (dots estilo Appito) ── */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-f-muted text-xs font-bold">{anotados} / {cupo} jugadores</span>
+            <span className="text-xs font-black" style={{ color: barColor }}>{libres > 0 ? `${libres} libre${libres !== 1 ? 's' : ''}` : 'LLENO'}</span>
           </div>
-          <div className="w-full h-2 bg-f-surface rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500"
-                 style={{ width: `${pct}%`, background: lleno ? '#ef4444' : casiFull ? '#f97316' : '#16a34a' }} />
+          {/* Dots de jugadores */}
+          <div className="flex gap-1 flex-wrap">
+            {Array.from({ length: cupo }).map((_, i) => (
+              <div key={i} className="w-6 h-6 rounded-full transition-all duration-300"
+                   style={{
+                     background: i < anotados
+                       ? (i === jugadores.indexOf(uid) && estaAnotado ? '#c4f54b' : barColor)
+                       : 'rgba(255,255,255,0.08)',
+                     border: i < anotados ? 'none' : '1px dashed rgba(255,255,255,0.12)',
+                   }} />
+            ))}
           </div>
         </div>
 
-        {/* Error temporal */}
+        {/* ── Error ── */}
         {accion === 'error' && mensajeError && (
-          <p className="text-red-400 text-xs mb-3 text-center">{mensajeError}</p>
+          <p className="text-red-400 text-xs text-center -mt-1">{mensajeError}</p>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between mt-auto gap-2">
-          <div className="flex-shrink-0">
-            <span className="text-f-accent text-3xl font-black">
+        {/* ── Footer: precio + botones ── */}
+        <div className="flex items-center justify-between mt-auto gap-2 pt-1"
+             style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div>
+            <span className="font-black text-2xl" style={{ color: '#c4f54b' }}>
               ${partido.precioPorJugador?.toLocaleString('es-UY') ?? '0'}
             </span>
-            <span className="text-f-muted text-sm"> /jug</span>
+            <span className="text-f-muted text-xs"> /jug</span>
           </div>
 
           <div className="flex gap-2">
-            {/* Botón chat — siempre visible si el usuario está anotado */}
             {estaAnotado && (
               <button onClick={onChat}
-                className="px-3 py-2.5 rounded-xl border border-f-border text-f-muted
-                           font-bold text-sm active:scale-95 transition-all hover:border-f-accent hover:text-f-accent">
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all active:scale-95"
+                style={{ background: 'rgba(196,245,75,0.08)', border: '1px solid rgba(196,245,75,0.2)', color: '#c4f54b' }}>
                 💬
               </button>
             )}
 
-            {/* Botón principal */}
             {estaAnotado ? (
-              <button onClick={handleSalirse}
-                disabled={accion === 'saliendo'}
-                className="px-4 py-2.5 rounded-xl font-black text-sm uppercase transition-all active:scale-95
-                           border border-red-800 text-red-400 hover:bg-red-950 disabled:opacity-50">
+              <button onClick={handleSalirse} disabled={accion === 'saliendo'}
+                className="px-4 h-10 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50"
+                style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
                 {accion === 'saliendo' ? '...' : 'Salirme'}
               </button>
             ) : (
               <button onClick={handleAnotarse}
                 disabled={lleno || baneado || accion === 'anotando'}
-                className={`px-5 py-2.5 rounded-xl font-black text-sm uppercase transition-all active:scale-95
-                            ${lleno || baneado
-                              ? 'bg-f-border text-f-muted cursor-not-allowed'
-                              : 'bg-f-green text-white'}`}
-                style={!lleno && !baneado ? { boxShadow: '0 4px 14px rgba(22,163,74,0.4)' } : {}}>
+                className="px-5 h-10 rounded-xl font-black text-sm uppercase transition-all active:scale-95 disabled:opacity-50"
+                style={lleno || baneado
+                  ? { background: 'rgba(255,255,255,0.06)', color: '#5a5a5a', cursor: 'not-allowed' }
+                  : { background: '#c4f54b', color: '#0c0c0c', boxShadow: '0 4px 20px rgba(196,245,75,0.3)' }}>
                 {accion === 'anotando' ? '...' : lleno ? 'LLENO' : baneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
               </button>
             )}

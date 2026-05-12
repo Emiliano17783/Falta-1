@@ -2,28 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Google Fonts — Inter ─────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body {
   margin: 0; padding: 0;
-  background: #080d08;
-  font-family: 'Barlow Condensed', sans-serif;
-  color: #c8e6c8;
+  background: #0c0c0c;
+  font-family: 'Inter', sans-serif;
+  color: #f2f5eb;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#root { min-height: 100svh; background: #080d08; }
+#root { min-height: 100svh; background: #0c0c0c; }
 
 /* ── Layout shell ─────────────────────────────────────────── */
-.app-shell { display: flex; min-height: 100svh; background: #080d08; }
+.app-shell { display: flex; min-height: 100svh; background: #0c0c0c; }
 
 .app-sidebar {
   position: fixed; top: 0; left: 0;
   width: 240px; height: 100svh;
-  background: #0c130c;
-  border-right: 1px solid #1a271a;
+  background: #111111;
+  border-right: 1px solid rgba(255,255,255,0.06);
   display: flex; flex-direction: column;
   z-index: 40; padding: 28px 16px;
 }
@@ -37,25 +41,33 @@ html, body {
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ── Animations ───────────────────────────────────────────── */
-.animate-fade-in     { animation: fadeUp 0.3s ease-out both; }
+.animate-fade-in     { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .animate-spin-custom { animation: spinCustom 1s linear infinite; }
-.animate-pulse-green { animation: pulseGreen 2s infinite; }
+.animate-pulse-green { animation: pulseLime 2s infinite; }
 
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes spinCustom { to { transform: rotate(360deg); } }
-@keyframes pulseGreen {
-  0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,0.4); }
-  50%     { box-shadow: 0 0 0 8px rgba(74,222,128,0); }
+@keyframes pulseLime {
+  0%,100% { box-shadow: 0 0 0 0 rgba(196,245,75,0.4); }
+  50%     { box-shadow: 0 0 0 10px rgba(196,245,75,0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
 
 /* ── Modal ────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(0,0,0,0.88);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(12px);
   z-index: 50;
   display: flex; align-items: flex-end; justify-content: center;
 }
@@ -63,27 +75,39 @@ html, body {
   width: 100%; max-width: 560px;
   max-height: 92svh; overflow-y: auto;
   border-radius: 24px 24px 0 0;
-  background: #131c13;
-  border-top: 1px solid #1a271a;
+  background: #181818;
+  border-top: 1px solid rgba(255,255,255,0.08);
   animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
 }
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-}
 
-/* ── Cards ────────────────────────────────────────────────── */
+/* ── Cards — Appito glassmorphism style ───────────────────── */
 .card {
-  background: #131c13; border: 1px solid #1a271a;
+  background: #1a1a1a;
+  border: 1px solid rgba(255,255,255,0.07);
   border-radius: 16px;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: border-color 0.2s, transform 0.12s, box-shadow 0.2s;
+  position: relative; overflow: hidden;
 }
-.card:active { transform: scale(0.99); }
+.card:hover {
+  border-color: rgba(196,245,75,0.15);
+  box-shadow: 0 0 0 1px rgba(196,245,75,0.05), 0 8px 32px rgba(0,0,0,0.6);
+}
+.card:active { transform: scale(0.985); }
 
-/* ── Badges ───────────────────────────────────────────────── */
-.nivel-principiante { background:#052e16; color:#4ade80; border:1px solid #166534; }
-.nivel-intermedio   { background:#422006; color:#fbbf24; border:1px solid #92400e; }
-.nivel-avanzado     { background:#450a0a; color:#f87171; border:1px solid #991b1b; }
+/* Card shimmer on hover */
+.card::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(196,245,75,0.03) 50%, transparent 60%);
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.card:hover::after { opacity: 1; }
+
+/* ── Badges nivel ─────────────────────────────────────────── */
+.nivel-principiante { background: rgba(196,245,75,0.08); color: #c4f54b; border: 1px solid rgba(196,245,75,0.2); }
+.nivel-intermedio   { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+.nivel-avanzado     { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
 
 /* ── Progress bar ─────────────────────────────────────────── */
 .progress-fill { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
@@ -91,45 +115,94 @@ html, body {
 /* ── Bottom nav — SOLO mobile ─────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  background: #0c130c; border-top: 1px solid #1a271a;
+  background: #111111;
+  border-top: 1px solid rgba(255,255,255,0.06);
   z-index: 40; display: flex;
+  backdrop-filter: blur(20px);
 }
 @media (min-width: 768px) { .bottom-nav { display: none; } }
 
 /* ── Grids responsive ─────────────────────────────────────── */
 .partidos-grid, .canchas-grid {
-  display: grid; grid-template-columns: 1fr; gap: 14px;
+  display: grid; grid-template-columns: 1fr; gap: 12px;
 }
 @media (min-width: 860px)  { .partidos-grid, .canchas-grid { grid-template-columns: repeat(2,1fr); } }
 @media (min-width: 1280px) { .partidos-grid, .canchas-grid { grid-template-columns: repeat(3,1fr); } }
 
-/* ── Hero banner ──────────────────────────────────────────── */
+/* ── Hero banner — Appito style (dark + lime glow) ────────── */
 .hero-bg {
-  background: linear-gradient(135deg, #052e16 0%, #14532d 45%, #166534 100%);
+  background: linear-gradient(160deg, #111111 0%, #141414 60%, #0c1a06 100%);
   position: relative; overflow: hidden;
 }
 .hero-bg::before {
   content: ''; position: absolute; inset: 0;
   background:
-    radial-gradient(circle at 75% 25%, rgba(74,222,128,0.12) 0%, transparent 50%),
-    radial-gradient(circle at 25% 75%, rgba(22,163,74,0.08) 0%, transparent 50%);
+    radial-gradient(ellipse at 80% 20%, rgba(196,245,75,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(22,163,74,0.06) 0%, transparent 55%);
   pointer-events: none;
+}
+.hero-bg::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(196,245,75,0.15), transparent);
 }
 
 /* ── Sidebar nav item ─────────────────────────────────────── */
 .sidebar-item {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px; border-radius: 12px;
-  font-weight: 700; font-size: 17px; text-transform: uppercase;
-  letter-spacing: 0.05em; cursor: pointer;
+  padding: 11px 14px; border-radius: 10px;
+  font-weight: 600; font-size: 14px; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  color: #4d6b4d; border: none; background: transparent; width: 100%;
+  color: #5a5a5a; border: none; background: transparent; width: 100%;
   text-align: left;
 }
-.sidebar-item:hover  { background: #131c13; color: #c8e6c8; }
-.sidebar-item.active { background: #0f2d0f; color: #4ade80; }
+.sidebar-item:hover  { background: rgba(255,255,255,0.04); color: #f2f5eb; }
+.sidebar-item.active { background: rgba(196,245,75,0.08); color: #c4f54b; }
 .sidebar-item.crear  {
-  background: #16a34a; color: white; margin-top: 8px;
-  box-shadow: 0 4px 14px rgba(22,163,74,0.4);
+  background: #c4f54b; color: #0c0c0c; margin-top: 8px; font-weight: 800;
+  box-shadow: 0 4px 20px rgba(196,245,75,0.3);
 }
-.sidebar-item.crear:hover { background: #15803d; }
+.sidebar-item.crear:hover { background: #d4ff5b; }
+
+/* ── Player FIFA card ─────────────────────────────────────── */
+.player-card {
+  position: relative; border-radius: 20px; overflow: hidden;
+  padding: 24px 20px; text-align: center;
+  background: linear-gradient(145deg, #1e1e1e, #141414);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.player-card.bronce  { --card-glow: rgba(205,127,50,0.3);  --card-color: #cd7f32; }
+.player-card.plata   { --card-glow: rgba(192,192,192,0.3); --card-color: #c0c0c0; }
+.player-card.oro     { --card-glow: rgba(255,215,0,0.35);  --card-color: #ffd700; }
+.player-card.platino { --card-glow: rgba(196,245,75,0.35); --card-color: #c4f54b; }
+
+.player-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, var(--card-glow, rgba(196,245,75,0.2)) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* ── Input base ───────────────────────────────────────────── */
+.input-base {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 14px 16px;
+  color: #f2f5eb; font-size: 15px; font-family: inherit;
+  outline: none; transition: border-color 0.2s;
+}
+.input-base:focus { border-color: rgba(196,245,75,0.5); }
+.input-base::placeholder { color: #5a5a5a; }
+
+/* ── Btn primary (lime) ───────────────────────────────────── */
+.btn-lime {
+  background: #c4f54b; color: #0c0c0c;
+  font-weight: 800; font-size: 15px; text-transform: uppercase;
+  letter-spacing: 0.05em; border: none; border-radius: 14px;
+  padding: 14px 24px; cursor: pointer; width: 100%;
+  transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 20px rgba(196,245,75,0.3);
+}
+.btn-lime:hover  { background: #d4ff5b; box-shadow: 0 6px 28px rgba(196,245,75,0.4); }
+.btn-lime:active { transform: scale(0.97); }
+.btn-lime:disabled { opacity: 0.4; cursor: not-allowed; }

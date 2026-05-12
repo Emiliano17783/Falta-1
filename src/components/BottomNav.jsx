@@ -12,17 +12,20 @@ export default function BottomNav({ tab, setTab }) {
         <button key={id} onClick={() => setTab(id)}
           className="flex flex-col items-center justify-center gap-0.5 py-3 px-2 flex-1 active:scale-90 transition-transform">
           {destacado ? (
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-green-sm transition-all
-                            ${tab === id ? 'bg-f-accent scale-110' : 'bg-f-green'}`}>
-              <span className="text-f-bg">{icon}</span>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all
+                            ${tab === id ? 'scale-110' : ''}`}
+                 style={{ background: tab === id ? '#c4f54b' : 'rgba(196,245,75,0.12)',
+                          boxShadow: '0 4px 16px rgba(196,245,75,0.25)',
+                          border: '1px solid rgba(196,245,75,0.25)' }}>
+              <span style={{ color: '#0c0c0c' }}>{icon}</span>
             </div>
           ) : (
-            <div className={`transition-colors ${tab === id ? 'text-f-accent' : 'text-f-muted'}`}>
+            <div style={{ color: tab === id ? '#c4f54b' : '#5a5a5a' }} className="transition-colors">
               {icon}
             </div>
           )}
-          <span className={`text-[10px] font-black uppercase tracking-wide transition-colors
-                            ${tab === id ? 'text-f-accent' : 'text-f-muted'}`}>
+          <span className="text-[10px] font-black uppercase tracking-wide transition-colors"
+                style={{ color: tab === id ? '#c4f54b' : '#5a5a5a' }}>
             {label}
           </span>
         </button>
