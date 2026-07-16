@@ -9,7 +9,7 @@ import { crearOActualizarUsuario, obtenerUsuario } from '../firebase/firestore';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser]     = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +51,6 @@ export function AuthProvider({ children }) {
   const registrarConEmail = async (nombre, email, password) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(result.user, { displayName: nombre });
-    // Force refresh so onAuthStateChanged picks up displayName
     await crearOActualizarUsuario({ ...result.user, displayName: nombre });
     return result.user;
   };
@@ -72,9 +71,14 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Derivar rol desde el perfil
+  const esCancha = perfil?.rol === 'cancha';
+  const esAdmin  = perfil?.admin === true || perfil?.rol === 'admin';
+
   return (
     <AuthContext.Provider value={{
       user, perfil, loading,
+      esCancha, esAdmin,
       loginConGoogle, registrarConEmail, loginConEmail,
       logout, refrescarPerfil,
     }}>

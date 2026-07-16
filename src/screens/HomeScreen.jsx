@@ -1,23 +1,20 @@
 import { useState, useEffect } from 'react';
 import { suscribirPartidos, anotarseAPartido, desanotarseDePartido } from '../firebase/firestore';
-import { PARTIDOS_DEMO, NIVEL_CONFIG } from '../data/partidos';
+import { PARTIDOS_DEMO } from '../data/partidos';
 import { BARRIOS_MONTEVIDEO } from '../data/canchas';
 import ChatModal from '../modals/ChatModal';
 import { useAuth } from '../context/AuthContext';
 
-const MODALIDADES = ['Todos', 'F5', 'F7'];
-const NIVELES_F = ['Todos', 'Principiante', 'Intermedio', 'Avanzado'];
+const DEPORTES = ['Todos', 'Fútbol', 'Pádel'];
 
-export default function HomeScreen({ setTab }) {
+export default function HomeScreen({ setTab, onVerDetalle }) {
   const { user, perfil } = useAuth();
   const [partidos, setPartidos] = useState([]);
-  const [modalidad, setModalidad] = useState('Todos');
-  const [nivel, setNivel] = useState('Todos');
+  const [deporte, setDeporte] = useState('Todos');
   const [barrio, setBarrio] = useState('Todos');
   const [chatPartido, setChatPartido] = useState(null);
   const [cargando, setCargando] = useState(true);
 
-  // Verificar si el usuario está penalizado/baneado
   const estaBaneado = perfil?.bloqueado || (
     perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
   );
@@ -36,8 +33,8 @@ export default function HomeScreen({ setTab }) {
   }, []);
 
   const filtrados = partidos.filter(p => {
-    if (modalidad !== 'Todos' && p.modalidad !== modalidad) return false;
-    if (nivel !== 'Todos' && p.nivel !== nivel) return false;
+    if (deporte === 'Fútbol' && p.deporte !== 'futbol') return false;
+    if (deporte === 'Pádel' && p.deporte !== 'padel') return false;
     if (barrio !== 'Todos' && p.barrio !== barrio) return false;
     return true;
   });
@@ -50,105 +47,126 @@ export default function HomeScreen({ setTab }) {
   return (
     <div className="min-h-svh bg-f-bg">
 
-      {/* Banner de penalización */}
+      {/* Banner baneado */}
       {estaBaneado && (
-        <div className="bg-red-950 border-b border-red-800 px-6 py-3 flex items-center gap-3">
-          <span className="text-red-400 text-xl flex-shrink-0">🚫</span>
-          <div>
-            <p className="text-red-300 font-bold text-sm">
-              {perfil?.bloqueado
-                ? 'Cuenta suspendida permanentemente por incumplimiento reiterado.'
-                : `Suspendido hasta el ${new Date(perfil.penalizacionHasta).toLocaleDateString('es-UY')}. No podés anotarte a partidos.`
-              }
-            </p>
-          </div>
+        <div className="bg-red-950 border-b border-red-800 px-5 py-3 flex items-center gap-3">
+          <span className="text-red-400 text-lg flex-shrink-0">🚫</span>
+          <p className="text-red-300 font-bold text-sm">
+            {perfil?.bloqueado
+              ? 'Cuenta bloqueada. Contactá al soporte.'
+              : `Suspendido hasta el ${new Date(perfil.penalizacionHasta).toLocaleDateString('es-UY')}.`}
+          </p>
         </div>
       )}
-
-      {/* Banner de advertencia */}
       {perfil?.advertencia && !estaBaneado && (
-        <div className="bg-yellow-950 border-b border-yellow-800 px-6 py-3 flex items-center gap-3">
-          <span className="text-yellow-400 text-xl flex-shrink-0">⚠️</span>
+        <div className="bg-yellow-950 border-b border-yellow-800 px-5 py-3 flex items-center gap-3">
+          <span className="text-yellow-400 flex-shrink-0">⚠️</span>
           <p className="text-yellow-300 text-sm font-medium">
-            Advertencia: faltaste a un partido sin avisar con 2 horas de anticipación. Una vez más y serás suspendido por 1 mes.
+            Depósito pendiente por cancelación tardía.
           </p>
         </div>
       )}
 
-      {/* HERO */}
-      <div className="hero-bg">
-        <div className="relative z-10 px-6 md:px-12 pt-10 pb-10">
-          <p className="text-green-300 text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-f-accent inline-block animate-pulse-green" />
-            Hola, {user?.displayName?.split(' ')[0] || 'jugador'} — Montevideo
+      {/* ── HERO ── */}
+      <div className="relative overflow-hidden flex flex-col justify-between"
+           style={{ background: '#0c0c0c', height: 'clamp(200px, 30vw, 280px)' }}>
+
+        {/* Fondo: video */}
+        <video
+          autoPlay muted loop playsInline
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ opacity: 0.6 }}
+        >
+          <source src="/hero.mp4" type="video/mp4" />
+        </video>
+
+        {/* Overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+             style={{ background: 'linear-gradient(to bottom, rgba(12,12,12,0.15) 0%, rgba(12,12,12,0.65) 100%)' }} />
+
+        {/* Texto arriba-izquierda */}
+        <div className="relative z-10 px-5 md:px-12 pt-6">
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-[0.2em] leading-none mb-0.5">
+            ¿te falta
           </p>
-          <h1 className="text-white font-black uppercase leading-none mb-5"
-              style={{ fontSize: 'clamp(2.5rem,7vw,5.5rem)' }}>
-            ¿TE FALTA<br />
-            <span className="text-f-accent">UN JUGADOR?</span>
+          <h1 className="font-black uppercase leading-none text-white"
+              style={{ fontSize: 'clamp(1.5rem, 5vw, 2.8rem)', letterSpacing: '-0.02em', lineHeight: 0.9 }}>
+            UN <span style={{ color: '#0ea5e9' }}>JUGADOR</span>?
           </h1>
-          <div className="flex flex-wrap gap-3 mb-7">
-            <StatChip valor={hoyCount} label="partidos hoy" />
-            <StatChip valor={partidos.length} label="disponibles" />
-            <StatChip valor="14" label="canchas" onClick={() => setTab && setTab('canchas')} clickable />
-          </div>
-          <button onClick={() => setTab && setTab('crear')}
-            className="inline-flex items-center gap-2 bg-f-accent text-f-bg font-black text-lg uppercase
-                       px-7 py-3.5 rounded-2xl active:scale-95 transition-transform"
-            style={{ boxShadow: '0 4px 24px rgba(74,222,128,0.45)' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            CREAR PARTIDO
+        </div>
+
+        {/* CTA Button abajo */}
+        <div className="relative z-10 -mx-0">
+          <button onClick={() => setTab?.('crear')}
+            className="w-full py-4 flex items-center justify-between px-6 md:px-12
+                       font-black text-xl uppercase transition-all active:brightness-90"
+            style={{ background: '#0ea5e9', color: '#0c0c0c' }}>
+            <span>+ CREAR PARTIDO</span>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+            </svg>
           </button>
         </div>
-        <svg className="absolute right-0 bottom-0 opacity-[0.07] h-56 md:h-72 pointer-events-none"
-             viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="100" cy="100" r="90" stroke="white" strokeWidth="3"/>
-          <line x1="100" y1="10" x2="100" y2="190" stroke="white" strokeWidth="2"/>
-          <circle cx="100" cy="100" r="25" stroke="white" strokeWidth="2"/>
-          <rect x="10" y="65" width="45" height="70" stroke="white" strokeWidth="2"/>
-          <rect x="145" y="65" width="45" height="70" stroke="white" strokeWidth="2"/>
-        </svg>
       </div>
 
-      {/* FILTROS sticky */}
-      <div className="sticky top-0 z-30 bg-f-bg/95 backdrop-blur-sm border-b border-f-border">
-        <div className="px-4 md:px-12 py-3 flex flex-wrap gap-2 items-center">
-          {MODALIDADES.map(m => (
-            <button key={m} onClick={() => setModalidad(m)}
-              className={`px-3 py-1.5 rounded-lg font-bold text-sm uppercase border transition-all
-                          ${modalidad === m ? 'bg-f-green border-f-green text-white' : 'border-f-border text-f-muted'}`}>
-              {m === 'F5' ? 'Fútbol 5' : m === 'F7' ? 'Fútbol 7' : m}
-            </button>
+      {/* ── PASOS ── */}
+      <div className="px-4 md:px-12 py-4 border-b border-f-border">
+        <p className="text-f-muted text-xs font-black uppercase tracking-widest mb-3">Cómo unirte</p>
+        <div className="flex gap-3">
+          {[
+            { n: '1', title: 'Elegí deporte', sub: 'Fútbol o Pádel' },
+            { n: '2', title: 'Buscá barrio', sub: 'Filtrá por zona' },
+            { n: '3', title: 'Unite', sub: 'El org. te acepta' },
+          ].map(s => (
+            <div key={s.n} className="flex-1 rounded-xl px-3 py-2.5"
+                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <span className="font-black text-xs" style={{ color: '#0ea5e9' }}>{s.n}</span>
+              <p className="text-white font-black text-xs leading-tight mt-0.5">{s.title}</p>
+              <p className="text-f-muted text-[10px] mt-0.5">{s.sub}</p>
+            </div>
           ))}
-          <div className="w-px h-5 bg-f-border hidden sm:block" />
-          {NIVELES_F.map(n => (
-            <button key={n} onClick={() => setNivel(n)}
-              className={`px-3 py-1.5 rounded-lg font-bold text-sm uppercase border transition-all
-                          ${nivel === n ? 'bg-f-accent border-f-accent text-f-bg' : 'border-f-border text-f-muted'}`}>
-              {n}
-            </button>
-          ))}
-          <div className="w-px h-5 bg-f-border hidden sm:block" />
-          <div className="flex gap-1 overflow-x-auto hide-scrollbar">
-            {['Todos', ...BARRIOS_MONTEVIDEO.slice(0,8)].map(b => (
-              <button key={b} onClick={() => setBarrio(b)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-lg font-bold text-sm border transition-all
-                            ${barrio === b ? 'bg-f-card border-f-border text-f-text' : 'border-transparent text-f-muted'}`}>
-                {b}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* GRILLA */}
-      <div className="px-4 md:px-12 py-6">
-        <div className="flex justify-between items-center mb-5">
-          <p className="text-f-muted text-sm font-bold uppercase tracking-wider">
+      {/* ── FILTROS ── */}
+      <div className="sticky top-0 z-30 bg-f-bg border-b border-f-border">
+
+        {/* Tabs deporte */}
+        <div className="flex border-b border-f-border">
+          {DEPORTES.map(d => (
+            <button key={d} onClick={() => setDeporte(d)}
+              className="relative flex-1 py-3 font-black text-sm uppercase tracking-wide transition-colors"
+              style={{ color: deporte === d ? '#54b5f0' : '#5a5a5a' }}>
+              {d === 'Fútbol' ? '⚽ Fútbol' : d === 'Pádel' ? '🎾 Pádel' : 'Todos'}
+              {deporte === d && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-f-green" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Scroll barrios */}
+        <div className="flex gap-1 overflow-x-auto hide-scrollbar px-3 py-2.5">
+          {['Todos', ...BARRIOS_MONTEVIDEO].map(b => (
+            <button key={b} onClick={() => setBarrio(b)}
+              className={`flex-shrink-0 px-3 py-1 rounded-md font-bold text-xs uppercase tracking-wide transition-all
+                          ${barrio === b
+                            ? 'bg-white/10 text-white'
+                            : 'text-f-muted hover:text-f-text'}`}>
+              {b}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── LISTA ── */}
+      <div className="px-4 md:px-12 py-5">
+        <div className="flex justify-between items-baseline mb-4">
+          <p className="text-white font-black text-lg uppercase">
             {cargando ? '...' : `${filtrados.length} partido${filtrados.length !== 1 ? 's' : ''}`}
           </p>
           {!cargando && hoyCount > 0 && (
-            <p className="text-f-accent text-sm font-bold">{hoyCount} son hoy</p>
+            <p className="text-f-green text-sm font-bold">{hoyCount} son hoy →</p>
           )}
         </div>
 
@@ -158,10 +176,10 @@ export default function HomeScreen({ setTab }) {
           </div>
         ) : filtrados.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
-            <span className="text-7xl mb-4">😔</span>
+            <p className="text-7xl mb-4">😔</p>
             <p className="text-f-text text-2xl font-black uppercase">Sin partidos</p>
             <p className="text-f-muted text-base mt-1 mb-6">Cambiá los filtros o creá el tuyo</p>
-            <button onClick={() => setTab && setTab('crear')}
+            <button onClick={() => setTab?.('crear')}
               className="bg-f-green text-white font-black text-lg uppercase px-8 py-3.5 rounded-2xl">
               + CREAR PARTIDO
             </button>
@@ -172,10 +190,42 @@ export default function HomeScreen({ setTab }) {
               <PartidoCard key={p.id} partido={p}
                 uid={user?.uid}
                 baneado={estaBaneado}
-                onChat={() => setChatPartido(p)} />
+                onChat={() => setChatPartido(p)}
+                onVerDetalle={() => onVerDetalle?.(p)} />
             ))}
           </div>
         )}
+      </div>
+
+      {/* ── BARRIOS ACTIVOS ── */}
+      {(() => {
+        const barriosConPartidos = BARRIOS_MONTEVIDEO.filter(b => partidos.some(p => p.barrio === b));
+        if (barriosConPartidos.length === 0) return null;
+        return (
+          <div className="px-4 md:px-12 pb-8 border-t border-f-border pt-8">
+            <p className="text-f-muted text-xs font-black uppercase tracking-[0.2em] mb-1">Dónde jugar</p>
+            <h2 className="text-white text-2xl font-black uppercase mb-5">Barrios activos</h2>
+            <div className="flex flex-wrap gap-2">
+              {barriosConPartidos.map(b => {
+                const cnt = partidos.filter(p => p.barrio === b).length;
+                return (
+                  <button key={b} onClick={() => setBarrio(b)}
+                    className="flex items-center gap-2 px-4 py-2 font-black text-sm uppercase tracking-wide
+                               border border-f-border text-f-muted hover:border-f-green hover:text-white transition-colors active:scale-95 rounded-lg">
+                    {b}
+                    <span className="text-f-green text-xs">{cnt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── FOOTER ── */}
+      <div className="px-4 md:px-12 py-8 border-t border-f-border pb-28 md:pb-10">
+        <p className="text-white font-black text-2xl uppercase mb-0.5">FALTA 1</p>
+        <p className="text-f-muted text-sm">⚽ Fútbol · 🎾 Pádel · Montevideo 🇺🇾</p>
       </div>
 
       {chatPartido && (
@@ -185,27 +235,7 @@ export default function HomeScreen({ setTab }) {
   );
 }
 
-function StatChip({ valor, label, onClick, clickable }) {
-  const cls = "flex items-center gap-2 rounded-xl px-4 py-2.5 border border-white/8"
-    + " bg-white/[0.04] backdrop-blur-sm";
-  return clickable ? (
-    <button onClick={onClick} className={`${cls} active:scale-95 transition-transform`}>
-      <span className="text-f-accent text-2xl font-black">{valor}</span>
-      <span className="text-f-text/70 text-sm font-medium">{label} →</span>
-    </button>
-  ) : (
-    <div className={cls}>
-      <span className="text-f-accent text-2xl font-black">{valor}</span>
-      <span className="text-f-text/70 text-sm font-medium">{label}</span>
-    </div>
-  );
-}
-
-function PartidoCard({ partido, uid, baneado, onChat }) {
-  const nivelCfg = NIVEL_CONFIG[partido.nivel] || NIVEL_CONFIG.Intermedio;
-  const nivelKey = partido.nivel?.toLowerCase().includes('prin') ? 'principiante'
-    : partido.nivel?.toLowerCase().includes('inter') ? 'intermedio' : 'avanzado';
-
+function PartidoCard({ partido, uid, baneado, onChat, onVerDetalle }) {
   const jugadores = partido.jugadores || [];
   const estaAnotado = uid && jugadores.includes(uid);
   const anotados = partido.jugadoresAnotados ?? 0;
@@ -221,11 +251,22 @@ function PartidoCard({ partido, uid, baneado, onChat }) {
   const fecha = new Date(partido.fechaHora);
   const hoy = new Date();
   const diaLabel = fecha.toDateString() === hoy.toDateString() ? 'HOY'
-    : fecha.toDateString() === new Date(Date.now()+86400000).toDateString() ? 'MAÑANA'
-    : fecha.toLocaleDateString('es-UY', { weekday:'short', day:'numeric', month:'short' }).toUpperCase();
-  const hora = fecha.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' });
+    : fecha.toDateString() === new Date(Date.now()+86400000).toDateString() ? 'MÑN'
+    : fecha.toLocaleDateString('es-UY', { weekday:'short' }).toUpperCase();
+  const diaNum  = fecha.toLocaleDateString('es-UY', { day:'numeric', month:'short' }).toUpperCase();
+  const hora    = fecha.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' });
 
-  const barColor = lleno ? '#ef4444' : casiFull ? '#f97316' : '#c4f54b';
+  const barColor = lleno ? '#ef4444' : casiFull ? '#f97316' : '#0ea5e9';
+
+  const deporteIcon  = partido.deporte === 'padel' ? '🎾' : '⚽';
+  const deporteLabel = partido.deporte === 'padel'
+    ? 'Pádel' : partido.modalidad === 'F5' ? 'F5' : 'F7';
+
+  const nivelColor = {
+    Principiante: '#22c55e',
+    Intermedio:   '#f59e0b',
+    Avanzado:     '#ef4444',
+  }[partido.nivel] || '#54b5f0';
 
   const handleAnotarse = async () => {
     if (!uid || accion) return;
@@ -252,122 +293,150 @@ function PartidoCard({ partido, uid, baneado, onChat }) {
   };
 
   return (
-    <div className={`card animate-fade-in flex flex-col overflow-hidden
-                     ${estaAnotado ? '' : ''}`}
-         style={estaAnotado ? { borderColor: 'rgba(196,245,75,0.2)', boxShadow: '0 0 0 1px rgba(196,245,75,0.06), 0 8px 32px rgba(0,0,0,0.5)' } : {}}>
+    <div className="animate-fade-in overflow-hidden rounded-2xl flex flex-col"
+         style={{
+           background: '#141414',
+           border: estaAnotado ? '1px solid rgba(14,165,233,0.3)' : '1px solid #222',
+           boxShadow: estaAnotado ? '0 0 24px rgba(14,165,233,0.08)' : '0 4px 20px rgba(0,0,0,0.4)',
+         }}>
 
-      {/* Top stripe de nivel */}
-      <div className="h-1 w-full" style={{ background: nivelCfg.color }} />
+      {/* Franja lateral de color (izquierda) */}
+      <div className="flex flex-1">
+        <div className="w-1 flex-shrink-0" style={{ background: barColor }} />
 
-      <div className="p-5 flex flex-col flex-1 gap-4">
+        <div className="flex flex-col flex-1 p-4 gap-3">
 
-        {/* ── Fila 1: Cancha + nivel badge ── */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-f-text text-lg font-black leading-tight truncate">{partido.nombreCancha}</p>
-            <p className="text-f-muted text-xs mt-0.5 font-medium">📍 {partido.barrio}</p>
+          {/* Fila 1: Sport icon + cancha + barrio */}
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                 style={{ background: 'rgba(255,255,255,0.05)' }}>
+              {deporteIcon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-black text-base leading-tight truncate">{partido.nombreCancha}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-f-muted text-xs font-medium">{partido.barrio}</p>
+                {partido.precioTotalCancha > 0 && (
+                  <span className="text-f-muted text-xs">·</span>
+                )}
+                {partido.precioTotalCancha > 0 && (
+                  <p className="text-f-muted text-xs font-medium">
+                    Total ${partido.precioTotalCancha.toLocaleString('es-UY')}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button onClick={onVerDetalle}
+              className="flex-shrink-0 text-f-muted text-xs font-bold px-2.5 py-1.5 rounded-lg active:scale-95 transition-all"
+              style={{ background: 'rgba(255,255,255,0.05)' }}>
+              ···
+            </button>
           </div>
-          <span className={`nivel-${nivelKey} px-2.5 py-1 rounded-lg text-xs font-black uppercase flex-shrink-0`}>
-            {partido.nivel}
-          </span>
-        </div>
 
-        {/* ── Fila 2: Fecha/hora prominente ── */}
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl px-5 py-3 flex flex-col items-center flex-shrink-0"
-               style={{ background: estaAnotado ? 'rgba(196,245,75,0.08)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${estaAnotado ? 'rgba(196,245,75,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
-            <span className="text-xs font-black tracking-widest"
-                  style={{ color: estaAnotado ? '#c4f54b' : '#5a5a5a' }}>{diaLabel}</span>
-            <span className="text-f-text text-3xl font-black leading-tight">{hora}</span>
-            <span className="text-f-muted text-xs font-medium">hs</span>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f2f5eb' }}>
-              ⚽ {partido.modalidad === 'F5' ? 'Fútbol 5' : 'Fútbol 7'}
-            </span>
-            {estaAnotado && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black"
-                    style={{ background: 'rgba(196,245,75,0.1)', border: '1px solid rgba(196,245,75,0.25)', color: '#c4f54b' }}>
-                ✓ Estás anotado
+          {/* Fila 2: Fecha + hora grande + badges */}
+          <div className="flex items-center gap-3">
+            {/* Bloque tiempo estilo scoreboard */}
+            <div className="flex-shrink-0 text-center"
+                 style={{ minWidth: 72 }}>
+              <p className="text-xs font-black uppercase tracking-widest"
+                 style={{ color: estaAnotado ? '#54b5f0' : '#5a5a5a' }}>
+                {diaLabel}
+              </p>
+              <p className="font-black leading-none" style={{ fontSize: '2rem', color: '#f2f5eb' }}>
+                {hora}
+              </p>
+              <p className="text-f-muted text-xs">{diaNum}</p>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px self-stretch" style={{ background: '#2a2a2a' }} />
+
+            {/* Badges */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-xs font-black px-2 py-1 rounded-md uppercase"
+                    style={{ background: 'rgba(255,255,255,0.06)', color: '#9ca3af' }}>
+                {deporteLabel}
               </span>
-            )}
-            {casiFull && !estaAnotado && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black animate-pulse"
-                    style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.3)', color: '#f97316' }}>
-                ¡Solo {libres} lugar{libres !== 1 ? 'es' : ''}!
-              </span>
-            )}
-            {lleno && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-black"
-                    style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                LLENO
-              </span>
-            )}
+              {partido.nivel && (
+                <span className="text-xs font-black px-2 py-1 rounded-md uppercase"
+                      style={{ background: nivelColor + '18', color: nivelColor }}>
+                  {partido.nivel}
+                </span>
+              )}
+              {estaAnotado && (
+                <span className="text-xs font-black px-2 py-1 rounded-md uppercase"
+                      style={{ background: 'rgba(14,165,233,0.12)', color: '#54b5f0' }}>
+                  ✓ anotado
+                </span>
+              )}
+              {casiFull && !estaAnotado && (
+                <span className="text-xs font-black px-2 py-1 rounded-md uppercase animate-pulse"
+                      style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}>
+                  ¡{libres} lugar{libres !== 1 ? 'es' : ''}!
+                </span>
+              )}
+              {lleno && (
+                <span className="text-xs font-black px-2 py-1 rounded-md uppercase"
+                      style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171' }}>
+                  LLENO
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* ── Fila 3: Jugadores (dots estilo Appito) ── */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-f-muted text-xs font-bold">{anotados} / {cupo} jugadores</span>
-            <span className="text-xs font-black" style={{ color: barColor }}>{libres > 0 ? `${libres} libre${libres !== 1 ? 's' : ''}` : 'LLENO'}</span>
-          </div>
-          {/* Dots de jugadores */}
-          <div className="flex gap-1 flex-wrap">
-            {Array.from({ length: cupo }).map((_, i) => (
-              <div key={i} className="w-6 h-6 rounded-full transition-all duration-300"
-                   style={{
-                     background: i < anotados
-                       ? (i === jugadores.indexOf(uid) && estaAnotado ? '#c4f54b' : barColor)
-                       : 'rgba(255,255,255,0.08)',
-                     border: i < anotados ? 'none' : '1px dashed rgba(255,255,255,0.12)',
-                   }} />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Error ── */}
-        {accion === 'error' && mensajeError && (
-          <p className="text-red-400 text-xs text-center -mt-1">{mensajeError}</p>
-        )}
-
-        {/* ── Footer: precio + botones ── */}
-        <div className="flex items-center justify-between mt-auto gap-2 pt-1"
-             style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          {/* Fila 3: barra de progreso minimalista */}
           <div>
-            <span className="font-black text-2xl" style={{ color: '#c4f54b' }}>
-              ${partido.precioPorJugador?.toLocaleString('es-UY') ?? '0'}
-            </span>
-            <span className="text-f-muted text-xs"> /jug</span>
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-f-muted font-bold">{anotados}/{cupo} jugadores</span>
+              <span className="font-black" style={{ color: barColor }}>
+                {libres > 0 ? `${libres} libre${libres !== 1 ? 's' : ''}` : 'LLENO'}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#222' }}>
+              <div className="h-full rounded-full transition-all duration-500"
+                   style={{ width: `${pct}%`, background: barColor }} />
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            {estaAnotado && (
-              <button onClick={onChat}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all active:scale-95"
-                style={{ background: 'rgba(196,245,75,0.08)', border: '1px solid rgba(196,245,75,0.2)', color: '#c4f54b' }}>
-                💬
-              </button>
-            )}
+          {accion === 'error' && mensajeError && (
+            <p className="text-red-400 text-xs -mt-1">{mensajeError}</p>
+          )}
 
-            {estaAnotado ? (
-              <button onClick={handleSalirse} disabled={accion === 'saliendo'}
-                className="px-4 h-10 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50"
-                style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
-                {accion === 'saliendo' ? '...' : 'Salirme'}
-              </button>
-            ) : (
-              <button onClick={handleAnotarse}
-                disabled={lleno || baneado || accion === 'anotando'}
-                className="px-5 h-10 rounded-xl font-black text-sm uppercase transition-all active:scale-95 disabled:opacity-50"
-                style={lleno || baneado
-                  ? { background: 'rgba(255,255,255,0.06)', color: '#5a5a5a', cursor: 'not-allowed' }
-                  : { background: '#c4f54b', color: '#0c0c0c', boxShadow: '0 4px 20px rgba(196,245,75,0.3)' }}>
-                {accion === 'anotando' ? '...' : lleno ? 'LLENO' : baneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
-              </button>
-            )}
+          {/* Fila 4: precio + botones */}
+          <div className="flex items-center justify-between gap-2 pt-1"
+               style={{ borderTop: '1px solid #222' }}>
+            <div>
+              <span className="font-black text-xl" style={{ color: '#54b5f0' }}>
+                ${partido.precioPorJugador?.toLocaleString('es-UY') ?? '0'}
+              </span>
+              <span className="text-f-muted text-xs font-medium"> /jug</span>
+            </div>
+
+            <div className="flex gap-2">
+              {estaAnotado && (
+                <button onClick={onChat}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-all active:scale-95"
+                  style={{ background: 'rgba(14,165,233,0.08)', color: '#54b5f0', border: '1px solid rgba(84,181,240,0.15)' }}>
+                  💬
+                </button>
+              )}
+              {estaAnotado ? (
+                <button onClick={handleSalirse} disabled={accion === 'saliendo'}
+                  className="px-4 h-9 rounded-xl font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50"
+                  style={{ border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
+                  {accion === 'saliendo' ? '...' : 'Salirme'}
+                </button>
+              ) : (
+                <button onClick={handleAnotarse}
+                  disabled={lleno || baneado || accion === 'anotando'}
+                  className="px-5 h-9 rounded-xl font-black text-sm uppercase transition-all active:scale-95 disabled:opacity-50"
+                  style={lleno || baneado
+                    ? { background: '#1c1c1c', color: '#5a5a5a', cursor: 'not-allowed', border: '1px solid #2a2a2a' }
+                    : { background: '#0ea5e9', color: '#fff', boxShadow: '0 4px 16px rgba(14,165,233,0.35)' }}>
+                  {accion === 'anotando' ? '...' : lleno ? 'LLENO' : baneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

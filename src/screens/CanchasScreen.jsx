@@ -1,32 +1,42 @@
-import { useState, useEffect } from 'react';
-import { CANCHAS as CANCHAS_STATIC } from '../data/canchas';
-import { suscribirCanchas } from '../firebase/firestore';
+import { useState } from 'react';
+import { CANCHAS_FUTBOL, CANCHAS_PADEL } from '../data/canchas';
 
 const SERVS = {
-  'Vestuarios':     { icon: '🚿' },
-  'Cantina':        { icon: '🍕' },
-  'Estacionamiento':{ icon: '🅿️' },
-  'WiFi':           { icon: '📶' },
-  'TV Cable':       { icon: '📺' },
+  'Vestuarios':          { icon: '🚿' },
+  'Cantina':             { icon: '🍕' },
+  'Estacionamiento':     { icon: '🅿️' },
+  'WiFi':                { icon: '📶' },
+  'TV Cable':            { icon: '📺' },
+  'Barbacoa':            { icon: '🔥' },
+  'Festejo Cumpleaños':  { icon: '🎂' },
 };
 
+const COURT_IMAGES = [
+  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1431324155629-1a5f33d8f5a3?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1623743868754-e89e8cf49c6c?w=600&q=75&auto=format',
+];
+
+const PADEL_IMAGES = [
+  'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1612632337640-5e99f8c4a4f3?w=600&q=75&auto=format',
+  'https://images.unsplash.com/photo-1571019613576-2b22c76fd955?w=600&q=75&auto=format',
+];
+
 export default function CanchasScreen({ onCrearPartido }) {
-  const [canchas, setCanchas] = useState(CANCHAS_STATIC);
+  const [tabDeporte, setTabDeporte] = useState('futbol');
   const [busqueda, setBusqueda] = useState('');
-  const [filtroMod, setFiltroMod] = useState('Todos');
   const [filtroTipo, setFiltroTipo] = useState('Todos');
 
-  useEffect(() => {
-    const unsub = suscribirCanchas((data) => {
-      setCanchas(data.length > 0 ? data : CANCHAS_STATIC);
-    });
-    return unsub;
-  }, []);
+  const canchasBase = tabDeporte === 'futbol' ? CANCHAS_FUTBOL : CANCHAS_PADEL;
 
-  const filtradas = canchas.filter(c => {
+  const filtradas = canchasBase.filter(c => {
     if (busqueda && !c.nombre.toLowerCase().includes(busqueda.toLowerCase()) &&
         !c.barrio.toLowerCase().includes(busqueda.toLowerCase())) return false;
-    if (filtroMod !== 'Todos' && !c.modalidades.includes(filtroMod)) return false;
     if (filtroTipo !== 'Todos' && c.tipo !== filtroTipo) return false;
     return true;
   });
@@ -39,12 +49,26 @@ export default function CanchasScreen({ onCrearPartido }) {
         <h1 className="text-white font-black uppercase mb-1" style={{ fontSize:'clamp(2rem,5vw,3.5rem)' }}>
           Canchas
         </h1>
-        <p className="text-f-muted text-base mb-5">
-          {filtradas.length} canchas disponibles en Montevideo — contacto directo por WhatsApp
+        <p className="text-f-muted text-base mb-4">
+          Montevideo — contacto directo, sin reserva online
         </p>
 
+        {/* Tabs Fútbol / Pádel */}
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => { setTabDeporte('futbol'); setBusqueda(''); setFiltroTipo('Todos'); }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-base uppercase border transition-all
+                        ${tabDeporte === 'futbol' ? 'bg-f-green border-f-green text-white' : 'border-f-border text-f-muted'}`}>
+            ⚽ Fútbol <span className="text-xs font-bold opacity-70">({CANCHAS_FUTBOL.length})</span>
+          </button>
+          <button onClick={() => { setTabDeporte('padel'); setBusqueda(''); setFiltroTipo('Todos'); }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-base uppercase border transition-all
+                        ${tabDeporte === 'padel' ? 'bg-f-green border-f-green text-white' : 'border-f-border text-f-muted'}`}>
+            🎾 Pádel <span className="text-xs font-bold opacity-70">({CANCHAS_PADEL.length})</span>
+          </button>
+        </div>
+
         {/* Búsqueda */}
-        <div className="relative mb-4 max-w-xl">
+        <div className="relative mb-3 max-w-xl">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-f-muted">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -57,87 +81,146 @@ export default function CanchasScreen({ onCrearPartido }) {
                        focus:border-f-accent transition-colors" />
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap gap-2">
-          {['Todos','F5','F7'].map(m => (
-            <button key={m} onClick={() => setFiltroMod(m)}
-              className={`px-4 py-1.5 rounded-lg font-bold text-sm uppercase border transition-all
-                          ${filtroMod === m ? 'bg-f-green border-f-green text-white' : 'border-f-border text-f-muted'}`}>
-              {m === 'Todos' ? 'Todas' : m}
-            </button>
-          ))}
-          <div className="w-px h-6 bg-f-border self-center" />
-          {['Todos','Techada','Abierta'].map(t => (
-            <button key={t} onClick={() => setFiltroTipo(t)}
-              className={`px-4 py-1.5 rounded-lg font-bold text-sm uppercase border transition-all
-                          ${filtroTipo === t ? 'bg-f-accent border-f-accent text-f-bg' : 'border-f-border text-f-muted'}`}>
-              {t === 'Todos' ? 'Todas' : t === 'Techada' ? '🏟️ Techada' : '☀️ Abierta'}
-            </button>
-          ))}
-        </div>
+        {/* Filtro tipo (solo fútbol tiene abierta/techada) */}
+        {tabDeporte === 'futbol' && (
+          <div className="flex flex-wrap gap-2">
+            {['Todos','Techada','Abierta'].map(t => (
+              <button key={t} onClick={() => setFiltroTipo(t)}
+                className={`px-4 py-1.5 rounded-lg font-bold text-sm uppercase border transition-all
+                            ${filtroTipo === t ? 'bg-f-accent border-f-accent text-f-bg' : 'border-f-border text-f-muted'}`}>
+                {t === 'Todos' ? 'Todas' : t === 'Techada' ? '🏟️ Techada' : '☀️ Abierta'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Descripción del deporte seleccionado */}
+      {tabDeporte === 'padel' && (
+        <div className="mx-4 md:mx-12 mt-4 bg-f-card border border-f-border rounded-xl px-4 py-3">
+          <p className="text-f-text text-sm font-bold">🎾 Pádel en Montevideo</p>
+          <p className="text-f-muted text-xs mt-1">
+            Partidas de 4 jugadores (2 vs 2). El organizador crea la partida y el costo de la cancha se divide entre los 4.
+            Los datos de estas canchas son de referencia — confirmá disponibilidad antes de reservar.
+          </p>
+        </div>
+      )}
 
       {/* Grilla */}
       <div className="px-4 md:px-12 py-6">
+        <p className="text-f-muted text-sm font-bold uppercase tracking-wider mb-4">
+          {filtradas.length} cancha{filtradas.length !== 1 ? 's' : ''}
+        </p>
         {filtradas.length === 0 ? (
           <div className="flex flex-col items-center py-24 text-center">
-            <span className="text-7xl mb-4">🏟️</span>
+            <span className="text-7xl mb-4">{tabDeporte === 'padel' ? '🎾' : '🏟️'}</span>
             <p className="text-f-text text-2xl font-black uppercase">Sin canchas</p>
             <p className="text-f-muted text-base mt-1">Probá cambiando los filtros</p>
           </div>
         ) : (
           <div className="canchas-grid">
-            {filtradas.map(c => (
-              <CanchaCard key={c.id} cancha={c}
+            {filtradas.map((c, idx) => (
+              <CanchaCard key={c.id} cancha={c} idx={idx}
+                espadel={tabDeporte === 'padel'}
                 onCrearPartido={() => onCrearPartido?.(c)} />
             ))}
           </div>
         )}
       </div>
+
+      {/* Aviso pagos */}
+      <div className="px-4 md:px-12 pb-12">
+        <div className="bg-f-card border border-f-border rounded-xl px-5 py-4">
+          <p className="text-f-text font-bold text-sm mb-1">💵 Pagos 100% en efectivo</p>
+          <p className="text-f-muted text-xs leading-relaxed">
+            En Falta 1 no hay ningún pago online. El organizador junta el efectivo de los jugadores y paga directamente en caja el día del partido o la partida.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
-function CanchaCard({ cancha, onCrearPartido }) {
+function CanchaCard({ cancha, idx, espadel, onCrearPartido }) {
   const [expandido, setExpandido] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  const copiarTelefono = () => {
+    if (!cancha.telefono) return;
+    navigator.clipboard.writeText(cancha.telefono).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    });
+  };
+
+  const imgUrl = espadel
+    ? PADEL_IMAGES[idx % PADEL_IMAGES.length]
+    : COURT_IMAGES[idx % COURT_IMAGES.length];
 
   const ratingStars = n => Array.from({length:5}).map((_,i) => (
-    <span key={i} className={i < n ? 'text-sm' : 'text-sm opacity-20'}>⚽</span>
+    <span key={i} className={i < n ? 'text-sm' : 'text-sm opacity-20'}>
+      {espadel ? '🎾' : '⚽'}
+    </span>
   ));
 
   const precioColor = cancha.precioPorHora >= 2800 ? '#f87171'
-    : cancha.precioPorHora >= 2000 ? '#fbbf24' : '#4ade80';
+    : cancha.precioPorHora >= 2000 ? '#fbbf24' : '#54b5f0';
 
+  const waMsg = encodeURIComponent(
+    `Hola, vi su cancha en Falta 1, ¿tienen disponible el [día] a las [hora]?`
+  );
   const waUrl = cancha.whatsapp
-    ? `https://wa.me/${cancha.whatsapp}?text=${encodeURIComponent(`Hola! Vi su cancha en Falta1 y me gustaría reservar. ¿Tienen disponibilidad?`)}`
+    ? `https://wa.me/${cancha.whatsapp}?text=${waMsg}`
     : null;
 
   return (
     <div className="card animate-fade-in flex flex-col overflow-hidden">
-      {/* Top bar precio */}
-      <div className="h-1.5 w-full" style={{ background: precioColor }} />
-
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-3">
-          <div className="flex-1 mr-3">
-            <p className="text-white text-xl font-black uppercase leading-tight">{cancha.nombre}</p>
-            <p className="text-f-muted text-sm mt-0.5">📍 {cancha.barrio}</p>
-            {cancha.telefono && (
-              <p className="text-f-muted text-xs mt-0.5">📞 {cancha.telefono}</p>
-            )}
-          </div>
-          <div className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex-shrink-0
-                          ${cancha.tipo === 'Techada' ? 'bg-blue-950 text-blue-300 border border-blue-900' : 'bg-orange-950 text-orange-300 border border-orange-900'}`}>
+      {/* Header imagen */}
+      {cancha.logo ? (
+        <div className="relative h-36 flex items-center justify-center overflow-hidden"
+             style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(14,165,233,0.06) 0%, #141414 70%)' }}>
+          <img src={cancha.logo} alt={cancha.nombre}
+               className="max-h-24 max-w-[65%] object-contain"
+               style={{ filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))' }}
+               onError={e => { e.currentTarget.style.display = 'none'; }} />
+          <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-black
+                          ${cancha.tipo === 'Techada' ? 'bg-blue-950/90 text-blue-300 border border-blue-900' : 'bg-orange-950/90 text-orange-300 border border-orange-900'}`}>
             {cancha.tipo === 'Techada' ? '🏟️ Techada' : '☀️ Abierta'}
           </div>
+        </div>
+      ) : (
+        <div className="relative h-36 overflow-hidden bg-f-card">
+          <img src={imgUrl} alt={cancha.nombre} className="w-full h-full object-cover"
+               onError={e => { e.currentTarget.parentElement.style.display = 'none'; }} />
+          <div className="absolute inset-0 pointer-events-none"
+               style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(26,26,26,0.85) 100%)' }} />
+          <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-black
+                          ${cancha.tipo === 'Techada' ? 'bg-blue-950/90 text-blue-300 border border-blue-900' : 'bg-orange-950/90 text-orange-300 border border-orange-900'}`}>
+            {cancha.tipo === 'Techada' ? '🏟️ Techada' : '☀️ Abierta'}
+          </div>
+        </div>
+      )}
+
+      <div className="h-1 w-full" style={{ background: precioColor }} />
+
+      <div className="p-5">
+        {/* Nombre y datos */}
+        <div className="mb-3">
+          <p className="text-white text-xl font-black uppercase leading-tight">{cancha.nombre}</p>
+          <p className="text-f-muted text-sm mt-0.5">📍 {cancha.barrio}</p>
+          {cancha.direccion && (
+            <p className="text-f-muted text-xs mt-0.5">{cancha.direccion}</p>
+          )}
+          {cancha.telefono && (
+            <p className="text-f-muted text-xs mt-0.5">📞 {cancha.telefono}</p>
+          )}
         </div>
 
         {/* Modalidades + rating */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             {cancha.modalidades.map(m => (
-              <span key={m} className="bg-green-950 border border-f-border text-f-accent text-xs font-black px-2.5 py-1 rounded-lg">
+              <span key={m} className="bg-sky-950 border border-f-border text-f-accent text-xs font-black px-2.5 py-1 rounded-lg">
                 {m}
               </span>
             ))}
@@ -145,14 +228,15 @@ function CanchaCard({ cancha, onCrearPartido }) {
           <div className="flex">{ratingStars(cancha.rating)}</div>
         </div>
 
-        {/* Precio */}
+        {/* Precio — solo referencia */}
         <div className="flex items-end justify-between mb-4">
           <div>
-            <p className="text-f-muted text-xs uppercase font-bold tracking-wide">Precio por hora</p>
+            <p className="text-f-muted text-xs uppercase font-bold tracking-wide">Precio referencia/hora</p>
             <p className="font-black text-3xl" style={{ color: precioColor }}>
               ${cancha.precioPorHora.toLocaleString('es-UY')}
               <span className="text-f-muted text-sm font-medium">/h</span>
             </p>
+            <p className="text-f-muted text-xs">Se paga en efectivo en caja</p>
           </div>
         </div>
 
@@ -179,21 +263,20 @@ function CanchaCard({ cancha, onCrearPartido }) {
 
         {/* Botones */}
         <div className="flex flex-col gap-2">
-          {/* Fila 1: servicios + crear partido */}
           <div className="flex gap-2">
             <button onClick={() => setExpandido(!expandido)}
               className="flex-1 border border-f-border text-f-muted font-bold text-sm uppercase
                          py-2.5 rounded-xl transition-all hover:border-f-text hover:text-f-text active:scale-95">
-              {expandido ? 'Ocultar' : 'Ver más'}
+              {expandido ? 'Ocultar' : 'Ver servicios'}
             </button>
             <button onClick={onCrearPartido}
               className="flex-1 border border-f-green text-f-accent font-black text-sm uppercase
                          py-2.5 rounded-xl active:scale-95 transition-transform">
-              + Partido
+              {espadel ? '+ Partida' : '+ Partido'}
             </button>
           </div>
 
-          {/* Fila 2: WhatsApp */}
+          {/* WhatsApp o llamar */}
           {waUrl ? (
             <a href={waUrl} target="_blank" rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm uppercase
@@ -202,9 +285,22 @@ function CanchaCard({ cancha, onCrearPartido }) {
               <WhatsAppIcon />
               CONTACTAR POR WHATSAPP
             </a>
+          ) : cancha.telefono ? (
+            <div className="flex gap-2">
+              <a href={`tel:${cancha.telefono.split('/')[0].trim().replace(/\s/g,'')}`}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-black text-sm uppercase
+                           bg-f-surface border border-f-border text-f-text active:scale-95 transition-transform">
+                📞 LLAMAR
+              </a>
+              <button onClick={copiarTelefono}
+                className="px-4 py-2.5 rounded-xl border border-f-border text-f-muted font-bold text-sm
+                           active:scale-95 transition-all hover:border-f-accent hover:text-f-accent flex-shrink-0">
+                {copiado ? '✅' : '📋'}
+              </button>
+            </div>
           ) : (
-            <div className="w-full text-center text-f-muted text-sm py-2">
-              Sin contacto disponible
+            <div className="bg-f-card border border-f-border rounded-xl px-4 py-2.5 text-center">
+              <p className="text-f-muted text-sm">Sin teléfono disponible</p>
             </div>
           )}
         </div>

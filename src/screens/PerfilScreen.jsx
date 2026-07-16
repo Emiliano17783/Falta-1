@@ -1,8 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { actualizarPerfil } from '../firebase/firestore';
+import { actualizarPerfil, suscribirMisPartidos } from '../firebase/firestore';
 
 const POSICIONES = ['Arquero', 'Defensa', 'Mediocampista', 'Delantero', 'Por definir'];
+const NIVELES_PADEL = ['Principiante', 'Intermedio', 'Avanzado'];
+
+const INSIGNIAS_INFO = {
+  'capitan_frecuente':  { icon: '🏆', label: 'Capitán frecuente',   desc: 'Organizaste 5 o más partidos' },
+  'sin_cancelaciones':  { icon: '✅', label: 'Sin cancelaciones',    desc: 'Nunca cancelaste con menos de 3 horas' },
+  'respuesta_rapida':   { icon: '⚡', label: 'Respuesta rápida',     desc: 'Siempre respondés rápido' },
+  'buen_companero':     { icon: '🤝', label: 'Buen compañero',       desc: 'Valorado por otros jugadores' },
+  'padelero_top':       { icon: '🎾', label: 'Padelero top',         desc: 'Jugaste 10 o más partidas de pádel' },
+};
 
 // Niveles de carrera estilo Appito — adaptados al Uruguay
 const NIVELES_CARRERA = [
@@ -10,9 +19,9 @@ const NIVELES_CARRERA = [
   { min: 6,  max: 15, titulo: 'Rey de la Pelada', color: '#c0c0c0', tier: 'plata' },
   { min: 16, max: 30, titulo: 'Promesa',          color: '#ffd700', tier: 'oro' },
   { min: 31, max: 50, titulo: 'Profesional',      color: '#ffd700', tier: 'oro' },
-  { min: 51, max: 80, titulo: 'Crack',            color: '#c4f54b', tier: 'platino' },
-  { min: 81, max: 120,titulo: 'Ídolo',            color: '#c4f54b', tier: 'platino' },
-  { min: 121,max: 999,titulo: 'LEYENDA',          color: '#c4f54b', tier: 'platino' },
+  { min: 51, max: 80, titulo: 'Crack',            color: '#54b5f0', tier: 'platino' },
+  { min: 81, max: 120,titulo: 'Ídolo',            color: '#54b5f0', tier: 'platino' },
+  { min: 121,max: 999,titulo: 'LEYENDA',          color: '#54b5f0', tier: 'platino' },
 ];
 
 function getNivelCarrera(partidosJugados) {
@@ -28,17 +37,19 @@ function getOverall(reputacion, partidosJugados, noShows) {
 }
 
 const HISTORIAL_DEMO = [
-  { cancha: 'Boston River F5', fecha: '3 mayo', resultado: 'Asistió ✅' },
-  { cancha: 'Aerosur F5',      fecha: '29 abril', resultado: 'Asistió ✅' },
-  { cancha: '2 Cabezas',       fecha: '24 abril', resultado: 'Asistió ✅' },
-  { cancha: 'Centro Gallego',  fecha: '18 abril', resultado: 'Asistió ✅' },
-  { cancha: 'Enfoque Deportivo',fecha: '10 abril', resultado: 'Asistió ✅' },
+  { cancha: 'Boston River F5', fecha: '10 jul', deporte: 'futbol', resultado: 'Asistió ✅' },
+  { cancha: 'Pádel Pocitos',   fecha: '7 jul',  deporte: 'padel',  resultado: 'Asistió ✅' },
+  { cancha: 'Aerosur F5',      fecha: '3 jul',  deporte: 'futbol', resultado: 'Asistió ✅' },
+  { cancha: 'Pádel Carrasco',  fecha: '28 jun', deporte: 'padel',  resultado: 'Asistió ✅' },
+  { cancha: '2 Cabezas F5',    fecha: '24 jun', deporte: 'futbol', resultado: 'Asistió ✅' },
 ];
 
+// Demo — "Sebas V." con 27 partidos jugados, 5 estrellas, 0 no-shows, todas las insignias
 const PERFIL_DEMO = {
-  nombre: 'Jugador', posicion: 'Mediocampista', ciudad: 'Montevideo',
-  partidosJugados: 0, reputacion: 5, noShows: 0,
-  insignias: [], penalizacionHasta: null, bloqueado: false, advertencia: false,
+  nombre: 'Sebas V.', posicion: 'Mediocampista', ciudad: 'Montevideo',
+  partidosJugados: 27, reputacion: 5, noShows: 0,
+  insignias: ['capitan_frecuente', 'sin_cancelaciones', 'respuesta_rapida', 'buen_companero', 'padelero_top'],
+  penalizacionHasta: null, bloqueado: false, advertencia: false,
 };
 
 export default function PerfilScreen({ setTab }) {
@@ -46,6 +57,13 @@ export default function PerfilScreen({ setTab }) {
   const [editando, setEditando] = useState(false);
   const [posicion, setPosicion] = useState(perfil?.posicion || 'Por definir');
   const [guardando, setGuardando] = useState(false);
+  const [misPartidos, setMisPartidos] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = suscribirMisPartidos(user.uid, setMisPartidos);
+    return () => unsub();
+  }, [user]);
 
   const p = perfil || PERFIL_DEMO;
   const nivel = getNivelCarrera(p.partidosJugados);
@@ -64,13 +82,6 @@ export default function PerfilScreen({ setTab }) {
     setEditando(false);
   };
 
-  // Atributos calculados (simulados como Appito)
-  const atributos = [
-    { label: 'ATQ', val: Math.min(99, Math.round(overall * 1.05)) },
-    { label: 'PAS', val: Math.min(99, Math.round(overall * 0.98)) },
-    { label: 'DEF', val: Math.min(99, Math.round(overall * 0.92)) },
-    { label: 'VEL', val: Math.min(99, Math.round(overall * 1.02)) },
-  ];
 
   return (
     <div className="min-h-svh bg-f-bg pb-28">
@@ -123,24 +134,16 @@ export default function PerfilScreen({ setTab }) {
           {editando ? (
             <select value={posicion} onChange={e => setPosicion(e.target.value)}
               className="mt-2 bg-f-bg border border-f-border rounded-lg px-3 py-1.5 text-f-text text-sm outline-none mx-auto block">
-              {POSICIONES.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+              <optgroup label="Fútbol">
+                {POSICIONES.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+              </optgroup>
+              <optgroup label="Pádel">
+                {NIVELES_PADEL.map(n => <option key={`padel-${n}`} value={`Pádel ${n}`}>Pádel {n}</option>)}
+              </optgroup>
             </select>
           ) : (
             <p className="text-f-muted text-sm mt-1">{p.posicion} · {p.ciudad}</p>
           )}
-
-          {/* Atributos */}
-          <div className="grid grid-cols-4 gap-2 mt-6">
-            {atributos.map(a => (
-              <div key={a.label} className="flex flex-col items-center gap-1">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black"
-                     style={{ background: `${nivel.color}15`, color: nivel.color }}>
-                  {a.val}
-                </div>
-                <p className="text-f-muted text-xs font-bold uppercase">{a.label}</p>
-              </div>
-            ))}
-          </div>
 
           {/* Botón editar */}
           <div className="mt-5 flex gap-2">
@@ -160,7 +163,7 @@ export default function PerfilScreen({ setTab }) {
               <button onClick={() => setEditando(true)}
                 className="w-full py-2.5 rounded-xl border font-bold text-sm uppercase transition-colors"
                 style={{ borderColor: `${nivel.color}40`, color: nivel.color }}>
-                ✏️ Editar posición
+                ✏️ Editar posición / nivel
               </button>
             )}
           </div>
@@ -191,13 +194,56 @@ export default function PerfilScreen({ setTab }) {
           </div>
         )}
 
+        {/* ── MIS PARTIDOS ─────────────────────────────────────── */}
+        {misPartidos.length > 0 && (
+          <div className="card p-5">
+            <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Mis partidos</p>
+            <div className="space-y-2">
+              {misPartidos.slice(0, 5).map(p => {
+                const fecha = new Date(p.fechaHora);
+                const deporte = p.deporte === 'padel' ? '🎾' : '⚽';
+                const estadoConfig = {
+                  pendiente:  { label: '⏳ Pendiente',  bg: 'bg-yellow-950', border: 'border-yellow-800', text: 'text-yellow-300' },
+                  confirmado: { label: '✅ Confirmado', bg: 'bg-green-950',  border: 'border-green-800',  text: 'text-green-300' },
+                  cancelado:  { label: '❌ Cancelado',  bg: 'bg-red-950',    border: 'border-red-800',    text: 'text-red-400' },
+                  finalizado: { label: '🏁 Finalizado', bg: 'bg-f-surface',  border: 'border-f-border',   text: 'text-f-muted' },
+                }[p.estado] || { label: p.estado, bg: 'bg-f-surface', border: 'border-f-border', text: 'text-f-muted' };
+                return (
+                  <div key={p.id} className="py-2.5 border-b last:border-b-0"
+                       style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-lg flex-shrink-0">{deporte}</span>
+                        <div className="min-w-0">
+                          <p className="text-f-text text-sm font-bold leading-tight truncate">{p.nombreCancha}</p>
+                          <p className="text-f-muted text-xs">
+                            {fecha.toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })} · {fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}hs
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-xs font-black px-2 py-1 rounded-lg border flex-shrink-0 ml-2 ${estadoConfig.bg} ${estadoConfig.border} ${estadoConfig.text}`}>
+                        {estadoConfig.label}
+                      </span>
+                    </div>
+                    {p.estado === 'cancelado' && p.motivoRechazo && (
+                      <p className="text-red-400 text-xs mt-1.5 ml-7 leading-snug">
+                        Motivo: {p.motivoRechazo}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── ESTADÍSTICAS ─────────────────────────────────────── */}
         <div className="card p-5">
           <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Estadísticas</p>
           <div className="grid grid-cols-3 gap-4 mb-5">
-            <StatBox valor={p.partidosJugados} label="Partidos" color="#c4f54b" />
+            <StatBox valor={p.partidosJugados} label="Partidos" color="#54b5f0" />
             <StatBox valor={`${p.reputacion}/5`} label="Reputación" color="#fbbf24" />
-            <StatBox valor={p.noShows || 0} label="No-shows" color={p.noShows > 0 ? '#f87171' : '#c4f54b'} />
+            <StatBox valor={p.noShows || 0} label="No-shows" color={p.noShows > 0 ? '#f87171' : '#54b5f0'} />
           </div>
           {/* Barra progreso hacia siguiente nivel */}
           <div>
@@ -274,18 +320,46 @@ export default function PerfilScreen({ setTab }) {
           </div>
         </div>
 
+        {/* ── INSIGNIAS ────────────────────────────────────────── */}
+        <div className="card p-5">
+          <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Insignias</p>
+          {p.insignias && p.insignias.length > 0 ? (
+            <div className="grid grid-cols-2 gap-2">
+              {p.insignias.map(key => {
+                const info = INSIGNIAS_INFO[key];
+                if (!info) return null;
+                return (
+                  <div key={key} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-f-border bg-f-surface">
+                    <span className="text-2xl flex-shrink-0">{info.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-f-text text-xs font-black leading-tight">{info.label}</p>
+                      <p className="text-f-muted text-xs leading-tight mt-0.5">{info.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-f-muted text-sm">Todavía no tenés insignias</p>
+              <p className="text-f-muted text-xs mt-1">Jugá más partidos para ganarlas</p>
+            </div>
+          )}
+        </div>
+
         {/* ── REGLAS DE PENALIZACIÓN ──────────────────────────── */}
         <div className="card p-5">
           <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Sistema de penalizaciones</p>
           <div className="space-y-3">
             {[
-              { icon: '✅', texto: 'Cancelás con +2 horas de anticipación', color: '#c4f54b' },
-              { icon: '⚠️', texto: '1er no-show: advertencia en la cuenta', color: '#fbbf24' },
-              { icon: '🔴', texto: '2do no-show: suspensión de 1 mes', color: '#f97316' },
-              { icon: '⛔', texto: '3er no-show: ban permanente', color: '#f87171' },
+              { icon: '✅', texto: 'Cancelás con +3 horas de anticipación → sin penalización' },
+              { icon: '⚠️', texto: 'Cancelás con −3 horas → depósito pendiente a criterio del organizador' },
+              { icon: '📉', texto: 'No aparecés sin avisar (no-show) → reputación baja 0.5 puntos' },
+              { icon: '🔴', texto: '2 no-shows → suspensión de 7 días' },
+              { icon: '⛔', texto: '3 no-shows → cuenta bloqueada permanentemente' },
             ].map((r, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <span className="text-lg w-7 text-center flex-shrink-0">{r.icon}</span>
+              <div key={i} className="flex items-start gap-3">
+                <span className="text-lg w-7 text-center flex-shrink-0 mt-0.5">{r.icon}</span>
                 <p className="text-f-text text-sm">{r.texto}</p>
               </div>
             ))}
@@ -310,7 +384,7 @@ export default function PerfilScreen({ setTab }) {
         </button>
 
         <p className="text-center text-f-muted text-xs pb-4">
-          Falta 1 — Fútbol amateur Montevideo 🇺🇾
+          Falta 1 — ⚽ Fútbol · 🎾 Pádel · Montevideo 🇺🇾
         </p>
       </div>
     </div>

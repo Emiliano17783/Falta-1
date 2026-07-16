@@ -15,11 +15,15 @@ service cloud.firestore {
     match /partidos/{partidoId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
-      // El creador puede modificar todo; cualquier usuario puede anotarse/salirse
+      // El creador puede modificar todo; cualquier usuario puede anotarse/salirse;
+      // la cancha puede confirmar/rechazar/registrar pago
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.creadoPor ||
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['jugadores', 'jugadoresAnotados', 'activo', 'estado'])
+          .hasOnly(['jugadores', 'jugadoresAnotados', 'activo', 'estado',
+                    'confirmadoEn', 'rechazadoEn', 'motivoRechazo',
+                    'pagoCanchaConfirmado', 'pagoCanchaFecha',
+                    'pagos'])
       );
       allow delete: if request.auth != null && request.auth.uid == resource.data.creadoPor;
 

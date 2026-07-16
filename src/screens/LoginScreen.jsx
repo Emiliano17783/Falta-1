@@ -6,23 +6,33 @@ export default function LoginScreen() {
   const [tab, setTab] = useState('google');
 
   return (
-    <div className="min-h-svh flex bg-f-bg overflow-hidden">
+    <div className="min-h-svh flex bg-f-bg overflow-hidden relative">
+
+      {/* Video de fondo — pantalla completa */}
+      <video autoPlay muted loop playsInline
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{ opacity: 0.4 }}>
+        <source src="/hero.mp4" type="video/mp4" />
+      </video>
+      {/* Overlay oscuro sobre el video */}
+      <div className="absolute inset-0 pointer-events-none"
+           style={{ background: 'linear-gradient(to right, rgba(12,12,12,0.45) 0%, rgba(12,12,12,0.82) 55%)' }} />
 
       {/* Panel izquierdo — visual desktop */}
-      <div className="hidden md:flex flex-1 relative items-center justify-center p-16 overflow-hidden"
-           style={{ background: 'linear-gradient(160deg, #0f0f0f 0%, #111111 60%, #0d1a04 100%)' }}>
+      <div className="hidden md:flex flex-1 relative items-center justify-center p-16 overflow-hidden z-10">
         {/* Glow de fondo */}
         <div className="absolute inset-0 pointer-events-none"
-             style={{ background: 'radial-gradient(ellipse at 60% 30%, rgba(196,245,75,0.06) 0%, transparent 60%)' }} />
+             style={{ background: 'radial-gradient(ellipse at 60% 30%, rgba(14,165,233,0.06) 0%, transparent 60%)' }} />
         {/* Línea bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-px"
-             style={{ background: 'linear-gradient(90deg, transparent, rgba(196,245,75,0.15), transparent)' }} />
+             style={{ background: 'linear-gradient(90deg, transparent, rgba(84,181,240,0.2), transparent)' }} />
 
         <div className="relative z-10 text-center max-w-md">
           {/* Logo grande */}
-          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 rounded-3xl"
-               style={{ background: 'rgba(196,245,75,0.08)', border: '1px solid rgba(196,245,75,0.15)' }}>
-            <span className="text-5xl">⚽</span>
+          <div className="mb-8 inline-flex items-center justify-center w-24 h-24 rounded-3xl overflow-hidden"
+               style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(84,181,240,0.2)' }}>
+            <img src="/logo.png" alt="Falta 1" className="w-full h-full object-cover"
+                 onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.insertAdjacentHTML('afterend','<span style="font-size:3rem">⚽</span>'); }} />
           </div>
 
           <h1 className="text-white font-black uppercase leading-none mb-3"
@@ -30,7 +40,7 @@ export default function LoginScreen() {
             FALTA 1
           </h1>
           <p className="font-bold uppercase tracking-widest text-lg mb-12"
-             style={{ color: '#c4f54b' }}>
+             style={{ color: '#54b5f0' }}>
             Fútbol amateur Montevideo
           </p>
 
@@ -53,17 +63,18 @@ export default function LoginScreen() {
       </div>
 
       {/* Panel derecho — auth */}
-      <div className="flex-1 md:max-w-[420px] flex flex-col justify-center px-6 py-12 relative"
-           style={{ background: '#0c0c0c' }}>
+      <div className="flex-1 md:max-w-[420px] flex flex-col justify-center px-6 py-12 relative z-10"
+           style={{ background: 'rgba(10,10,10,0.88)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
 
         {/* Mobile: logo */}
         <div className="md:hidden mb-10 text-center">
-          <div className="w-20 h-20 rounded-3xl mx-auto mb-4 flex items-center justify-center"
-               style={{ background: 'rgba(196,245,75,0.08)', border: '1px solid rgba(196,245,75,0.2)' }}>
-            <span className="text-5xl">⚽</span>
+          <div className="w-20 h-20 rounded-3xl mx-auto mb-4 flex items-center justify-center overflow-hidden"
+               style={{ background: 'rgba(14,165,233,0.08)', border: '1px solid rgba(84,181,240,0.25)' }}>
+            <img src="/logo.png" alt="Falta 1" className="w-full h-full object-cover"
+                 onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.insertAdjacentHTML('afterend','<span style="font-size:3rem">⚽</span>'); }} />
           </div>
           <h1 className="text-f-text text-5xl font-black uppercase" style={{ letterSpacing: '-0.02em' }}>FALTA 1</h1>
-          <p className="font-bold uppercase tracking-widest text-sm mt-2" style={{ color: '#c4f54b' }}>Fútbol amateur Mvd</p>
+          <p className="font-bold uppercase tracking-widest text-sm mt-2" style={{ color: '#54b5f0' }}>Fútbol amateur Mvd</p>
         </div>
 
         {/* Título desktop */}
@@ -83,7 +94,7 @@ export default function LoginScreen() {
             <button key={t.id} onClick={() => setTab(t.id)}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wide transition-all"
               style={tab === t.id
-                ? { background: '#c4f54b', color: '#0c0c0c' }
+                ? { background: '#0ea5e9', color: '#ffffff' }
                 : { color: '#5a5a5a' }}>
               {t.label}
             </button>

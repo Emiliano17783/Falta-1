@@ -13,9 +13,10 @@ export default function Sidebar({ tab, setTab }) {
     <aside className="app-sidebar hidden md:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 mb-10 px-2">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-             style={{ background:'rgba(196,245,75,0.1)', border:'1px solid rgba(196,245,75,0.2)', boxShadow:'0 4px 20px rgba(196,245,75,0.15)' }}>
-          <span className="text-2xl">⚽</span>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+             style={{ background:'rgba(14,165,233,0.1)', border:'1px solid rgba(84,181,240,0.25)', boxShadow:'0 4px 20px rgba(84,181,240,0.2)' }}>
+          <img src="/logo.png" alt="Falta 1" className="w-full h-full object-cover"
+               onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.insertAdjacentHTML('afterend','<span style="font-size:1.2rem">⚽</span>'); }} />
         </div>
         <div>
           <p className="text-f-text text-2xl font-black uppercase leading-none tracking-tight">FALTA 1</p>
@@ -38,6 +39,13 @@ export default function Sidebar({ tab, setTab }) {
           className={`sidebar-item crear ${tab === 'crear' ? 'opacity-90' : ''}`}>
           <span className="text-xl"><PlusIcon /></span>
           Crear partido
+        </button>
+
+        <button onClick={() => setTab('unirse')}
+          className={`sidebar-item ${tab === 'unirse' ? 'active' : ''}`}
+          style={{ marginTop: 4, border: tab === 'unirse' ? 'none' : '1px solid rgba(14,165,233,0.25)', color: tab === 'unirse' ? '' : '#54b5f0' }}>
+          <span className="text-xl"><UnirseIcon /></span>
+          Unirme a un partido
         </button>
       </nav>
 
@@ -82,5 +90,10 @@ function PerfilIcon() {
 function PlusIcon() {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+  </svg>;
+}
+function UnirseIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
   </svg>;
 }

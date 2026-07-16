@@ -1,9 +1,9 @@
+/* ── Google Fonts — cargado desde index.html ──────────────── */
+/* (no importar fuente acá — editá index.html para cambiar tipografía) */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* ── Google Fonts — Inter ─────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 /* ── Reset & base ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -11,11 +11,16 @@
 html, body {
   margin: 0; padding: 0;
   background: #0c0c0c;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Space Grotesk', sans-serif;
   color: #f2f5eb;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6,
+.font-black, .font-extrabold, .uppercase {
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 #root { min-height: 100svh; background: #0c0c0c; }
@@ -28,9 +33,10 @@ html, body {
   width: 240px; height: 100svh;
   background: #111111;
   border-right: 1px solid rgba(255,255,255,0.06);
-  display: flex; flex-direction: column;
+  display: none; flex-direction: column;
   z-index: 40; padding: 28px 16px;
 }
+@media (min-width: 768px) { .app-sidebar { display: flex; } }
 
 .app-main { flex: 1; min-height: 100svh; overflow-y: auto; }
 
@@ -43,16 +49,16 @@ html, body {
 /* ── Animations ───────────────────────────────────────────── */
 .animate-fade-in     { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 .animate-spin-custom { animation: spinCustom 1s linear infinite; }
-.animate-pulse-green { animation: pulseLime 2s infinite; }
+.animate-pulse-green { animation: pulseCeleste 2s infinite; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes spinCustom { to { transform: rotate(360deg); } }
-@keyframes pulseLime {
-  0%,100% { box-shadow: 0 0 0 0 rgba(196,245,75,0.4); }
-  50%     { box-shadow: 0 0 0 10px rgba(196,245,75,0); }
+@keyframes pulseCeleste {
+  0%,100% { box-shadow: 0 0 0 0 rgba(84,181,240,0.4); }
+  50%     { box-shadow: 0 0 0 10px rgba(84,181,240,0); }
 }
 @keyframes slideUp {
   from { transform: translateY(100%); }
@@ -80,7 +86,7 @@ html, body {
   animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
 }
 
-/* ── Cards — Appito glassmorphism style ───────────────────── */
+/* ── Cards ────────────────────────────────────────────────── */
 .card {
   background: #1a1a1a;
   border: 1px solid rgba(255,255,255,0.07);
@@ -89,30 +95,24 @@ html, body {
   position: relative; overflow: hidden;
 }
 .card:hover {
-  border-color: rgba(196,245,75,0.15);
-  box-shadow: 0 0 0 1px rgba(196,245,75,0.05), 0 8px 32px rgba(0,0,0,0.6);
+  border-color: rgba(84,181,240,0.2);
+  box-shadow: 0 0 0 1px rgba(84,181,240,0.05), 0 8px 32px rgba(0,0,0,0.6);
 }
 .card:active { transform: scale(0.985); }
 
-/* Card shimmer on hover */
 .card::after {
   content: '';
   position: absolute; inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(196,245,75,0.03) 50%, transparent 60%);
+  background: linear-gradient(135deg, transparent 40%, rgba(84,181,240,0.03) 50%, transparent 60%);
   opacity: 0; transition: opacity 0.3s;
   pointer-events: none;
 }
 .card:hover::after { opacity: 1; }
 
-/* ── Badges nivel ─────────────────────────────────────────── */
-.nivel-principiante { background: rgba(196,245,75,0.08); color: #c4f54b; border: 1px solid rgba(196,245,75,0.2); }
-.nivel-intermedio   { background: rgba(251,191,36,0.1);  color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
-.nivel-avanzado     { background: rgba(239,68,68,0.1);   color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
-
 /* ── Progress bar ─────────────────────────────────────────── */
 .progress-fill { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
 
-/* ── Bottom nav — SOLO mobile ─────────────────────────────── */
+/* ── Bottom nav ───────────────────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
   background: #111111;
@@ -129,40 +129,41 @@ html, body {
 @media (min-width: 860px)  { .partidos-grid, .canchas-grid { grid-template-columns: repeat(2,1fr); } }
 @media (min-width: 1280px) { .partidos-grid, .canchas-grid { grid-template-columns: repeat(3,1fr); } }
 
-/* ── Hero banner — Appito style (dark + lime glow) ────────── */
+/* ── Hero banner ──────────────────────────────────────────── */
 .hero-bg {
-  background: linear-gradient(160deg, #111111 0%, #141414 60%, #0c1a06 100%);
+  background: linear-gradient(160deg, #111111 0%, #141414 60%, #0a0f14 100%);
   position: relative; overflow: hidden;
 }
 .hero-bg::before {
   content: ''; position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse at 80% 20%, rgba(196,245,75,0.07) 0%, transparent 55%),
-    radial-gradient(ellipse at 20% 80%, rgba(22,163,74,0.06) 0%, transparent 55%);
+    radial-gradient(ellipse at 80% 20%, rgba(84,181,240,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 20% 80%, rgba(14,165,233,0.05) 0%, transparent 55%);
   pointer-events: none;
 }
 .hero-bg::after {
   content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(196,245,75,0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(84,181,240,0.2), transparent);
 }
 
 /* ── Sidebar nav item ─────────────────────────────────────── */
 .sidebar-item {
   display: flex; align-items: center; gap: 12px;
   padding: 11px 14px; border-radius: 10px;
-  font-weight: 600; font-size: 14px; text-transform: uppercase;
-  letter-spacing: 0.06em; cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500; font-size: 15px; text-transform: uppercase;
+  letter-spacing: 0.08em; cursor: pointer;
   transition: background 0.15s, color 0.15s;
   color: #5a5a5a; border: none; background: transparent; width: 100%;
   text-align: left;
 }
 .sidebar-item:hover  { background: rgba(255,255,255,0.04); color: #f2f5eb; }
-.sidebar-item.active { background: rgba(196,245,75,0.08); color: #c4f54b; }
+.sidebar-item.active { background: rgba(84,181,240,0.08); color: #54b5f0; }
 .sidebar-item.crear  {
-  background: #c4f54b; color: #0c0c0c; margin-top: 8px; font-weight: 800;
-  box-shadow: 0 4px 20px rgba(196,245,75,0.3);
+  background: #0ea5e9; color: #0c0c0c; margin-top: 8px; font-weight: 700;
+  box-shadow: 0 4px 20px rgba(14,165,233,0.35);
 }
-.sidebar-item.crear:hover { background: #d4ff5b; }
+.sidebar-item.crear:hover { background: #38bdf8; }
 
 /* ── Player FIFA card ─────────────────────────────────────── */
 .player-card {
@@ -174,11 +175,11 @@ html, body {
 .player-card.bronce  { --card-glow: rgba(205,127,50,0.3);  --card-color: #cd7f32; }
 .player-card.plata   { --card-glow: rgba(192,192,192,0.3); --card-color: #c0c0c0; }
 .player-card.oro     { --card-glow: rgba(255,215,0,0.35);  --card-color: #ffd700; }
-.player-card.platino { --card-glow: rgba(196,245,75,0.35); --card-color: #c4f54b; }
+.player-card.platino { --card-glow: rgba(84,181,240,0.35); --card-color: #54b5f0; }
 
 .player-card::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, var(--card-glow, rgba(196,245,75,0.2)) 0%, transparent 65%);
+  background: radial-gradient(ellipse at 50% 0%, var(--card-glow, rgba(84,181,240,0.2)) 0%, transparent 65%);
   pointer-events: none;
 }
 
@@ -188,21 +189,22 @@ html, body {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 12px; padding: 14px 16px;
-  color: #f2f5eb; font-size: 15px; font-family: inherit;
+  color: #f2f5eb; font-size: 15px; font-family: 'Space Grotesk', sans-serif;
   outline: none; transition: border-color 0.2s;
 }
-.input-base:focus { border-color: rgba(196,245,75,0.5); }
+.input-base:focus { border-color: rgba(84,181,240,0.5); }
 .input-base::placeholder { color: #5a5a5a; }
 
-/* ── Btn primary (lime) ───────────────────────────────────── */
+/* ── Btn primary ──────────────────────────────────────────── */
 .btn-lime {
-  background: #c4f54b; color: #0c0c0c;
-  font-weight: 800; font-size: 15px; text-transform: uppercase;
-  letter-spacing: 0.05em; border: none; border-radius: 14px;
+  background: #0ea5e9; color: #ffffff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700; font-size: 16px; text-transform: uppercase;
+  letter-spacing: 0.08em; border: none; border-radius: 14px;
   padding: 14px 24px; cursor: pointer; width: 100%;
   transition: transform 0.12s, background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 20px rgba(196,245,75,0.3);
+  box-shadow: 0 4px 20px rgba(14,165,233,0.35);
 }
-.btn-lime:hover  { background: #d4ff5b; box-shadow: 0 6px 28px rgba(196,245,75,0.4); }
+.btn-lime:hover  { background: #38bdf8; box-shadow: 0 6px 28px rgba(14,165,233,0.45); }
 .btn-lime:active { transform: scale(0.97); }
 .btn-lime:disabled { opacity: 0.4; cursor: not-allowed; }

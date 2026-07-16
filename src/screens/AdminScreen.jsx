@@ -59,7 +59,10 @@ export default function AdminScreen({ setTab }) {
 
   const stats = {
     partidos: partidos.length,
-    activos: partidos.filter(p => p.activo).length,
+    pendientes: partidos.filter(p => p.estado === 'pendiente').length,
+    confirmados: partidos.filter(p => p.estado === 'confirmado').length,
+    finalizados: partidos.filter(p => p.estado === 'finalizado').length,
+    cancelados: partidos.filter(p => p.estado === 'cancelado').length,
     canchas: canchas.length,
     usuarios: usuarios.length,
     baneados: usuarios.filter(u => u.bloqueado || (u.penalizacionHasta && new Date(u.penalizacionHasta) > new Date())).length,
@@ -80,13 +83,16 @@ export default function AdminScreen({ setTab }) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-4">
+        <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-4">
           {[
-            { label: 'Partidos', val: stats.partidos, color: '#4ade80' },
-            { label: 'Activos', val: stats.activos, color: '#4ade80' },
-            { label: 'Canchas', val: stats.canchas, color: '#60a5fa' },
-            { label: 'Usuarios', val: stats.usuarios, color: '#a78bfa' },
-            { label: 'Suspendidos', val: stats.baneados, color: '#f97316' },
+            { label: 'Total',      val: stats.partidos,    color: '#54b5f0' },
+            { label: '⏳ Pend.',   val: stats.pendientes,  color: '#ca8a04' },
+            { label: '✅ Conf.',   val: stats.confirmados, color: '#16a34a' },
+            { label: '🏁 Fin.',    val: stats.finalizados, color: '#6b7280' },
+            { label: '❌ Canc.',   val: stats.cancelados,  color: '#dc2626' },
+            { label: 'Canchas',    val: stats.canchas,     color: '#60a5fa' },
+            { label: 'Usuarios',   val: stats.usuarios,    color: '#a78bfa' },
+            { label: 'Suspendidos',val: stats.baneados,    color: '#f97316' },
           ].map(s => (
             <div key={s.label} className="bg-f-card border border-f-border rounded-xl p-3 text-center">
               <p className="font-black text-xl" style={{ color: s.color }}>{s.val}</p>
@@ -125,44 +131,148 @@ export default function AdminScreen({ setTab }) {
 }
 
 /* ── Sección Partidos ───────────────────────────────────────── */
+const ESTADO_CONFIG = {
+  pendiente:  { label: '⏳ Pendiente',  bg: 'bg-yellow-950', border: 'border-yellow-800', text: 'text-yellow-300' },
+  confirmado: { label: '✅ Confirmado', bg: 'bg-green-950',  border: 'border-green-800',  text: 'text-green-300' },
+  en_curso:   { label: '🔴 En curso',   bg: 'bg-blue-950',   border: 'border-blue-800',   text: 'text-blue-300' },
+  finalizado: { label: '🏁 Finalizado', bg: 'bg-f-surface',  border: 'border-f-border',   text: 'text-f-muted' },
+  cancelado:  { label: '❌ Cancelado',  bg: 'bg-red-950',    border: 'border-red-800',    text: 'text-red-400' },
+  lleno:      { label: '🔒 Lleno',      bg: 'bg-orange-950', border: 'border-orange-800', text: 'text-orange-300' },
+};
+
 function SeccionPartidos({ partidos }) {
+  const [filtro, setFiltro] = useState('todos');
+
+  const filtrados = filtro === 'todos' ? partidos
+    : partidos.filter(p => p.estado === filtro);
+
+  const counts = {
+    todos: partidos.length,
+    pendiente: partidos.filter(p => p.estado === 'pendiente').length,
+    confirmado: partidos.filter(p => p.estado === 'confirmado').length,
+    finalizado: partidos.filter(p => p.estado === 'finalizado').length,
+    cancelado: partidos.filter(p => p.estado === 'cancelado').length,
+  };
+
   const handleEliminar = async (id) => {
     if (!confirm('¿Eliminar este partido?')) return;
     await eliminarPartidoAdmin(id);
   };
 
   return (
-    <div className="space-y-3">
-      {partidos.length === 0 && (
-        <p className="text-f-muted text-center py-12">No hay partidos aún.</p>
-      )}
-      {partidos.map(p => {
-        const fecha = new Date(p.fechaHora);
-        return (
-          <div key={p.id} className="card flex items-center gap-3 p-4">
-            <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0
-              ${p.activo ? 'bg-f-green' : p.estado === 'lleno' ? 'bg-red-500' : 'bg-f-muted'}`} />
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-black truncate">{p.nombreCancha}</p>
-              <p className="text-f-muted text-xs">
-                {fecha.toLocaleDateString('es-UY', { weekday:'short', day:'numeric', month:'short' })}{' '}
-                {fecha.toLocaleTimeString('es-UY', { hour:'2-digit', minute:'2-digit' })} ·{' '}
-                {p.jugadoresAnotados}/{p.cupoTotal} jug · {p.modalidad}
-              </p>
+    <div>
+      {/* Filtros rápidos */}
+      <div className="flex gap-2 flex-wrap mb-4">
+        {[
+          { id: 'todos',      label: `Todos (${counts.todos})` },
+          { id: 'pendiente',  label: `⏳ Pendientes (${counts.pendiente})` },
+          { id: 'confirmado', label: `✅ Confirmados (${counts.confirmado})` },
+          { id: 'finalizado', label: `🏁 Finalizados (${counts.finalizado})` },
+          { id: 'cancelado',  label: `❌ Cancelados (${counts.cancelado})` },
+        ].map(f => (
+          <button key={f.id} onClick={() => setFiltro(f.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all
+              ${filtro === f.id ? 'bg-f-green border-f-green text-white' : 'border-f-border text-f-muted'}`}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {filtrados.length === 0 && (
+          <p className="text-f-muted text-center py-12">No hay partidos en este estado.</p>
+        )}
+        {filtrados.map(p => {
+          const fecha = new Date(p.fechaHora);
+          const deporte = p.deporte === 'padel' ? '🎾' : '⚽';
+          const estadoCfg = ESTADO_CONFIG[p.estado] || ESTADO_CONFIG.cancelado;
+          const pagoJugadores = Object.values(p.pagos || {}).filter(v => v.marcadoPorOrganizador).length;
+          const totalJugadores = p.jugadoresAnotados || 0;
+
+          return (
+            <div key={p.id} className="card overflow-hidden">
+              {/* Barra de color por estado */}
+              <div className={`h-1 w-full ${estadoCfg.bg.replace('bg-', 'bg-').replace('950','700').replace('surface','f-border')}`}
+                   style={{ background: p.estado === 'confirmado' ? '#16a34a' : p.estado === 'pendiente' ? '#ca8a04' : p.estado === 'cancelado' ? '#dc2626' : p.estado === 'finalizado' ? '#374151' : '#2563eb' }} />
+
+              <div className="p-4 space-y-3">
+                {/* Fila 1: cancha + estado + deporte */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{deporte}</span>
+                      <p className="text-white font-black text-base leading-tight truncate">{p.nombreCancha}</p>
+                    </div>
+                    <p className="text-f-muted text-xs mt-0.5">📍 {p.barrio} · {p.modalidad} · Nivel: {p.nivel || '—'}</p>
+                  </div>
+                  <span className={`text-xs font-black px-2.5 py-1 rounded-lg border flex-shrink-0 ${estadoCfg.bg} ${estadoCfg.border} ${estadoCfg.text}`}>
+                    {estadoCfg.label}
+                  </span>
+                </div>
+
+                {/* Fila 2: fecha, jugadores, organizador */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-f-bg rounded-lg px-2 py-2">
+                    <p className="text-white text-xs font-black">
+                      {fecha.toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })}
+                    </p>
+                    <p className="text-f-muted text-xs">
+                      {fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}hs
+                    </p>
+                  </div>
+                  <div className="bg-f-bg rounded-lg px-2 py-2">
+                    <p className="text-white text-xs font-black">{p.jugadoresAnotados}/{p.cupoTotal}</p>
+                    <p className="text-f-muted text-xs">Jugadores</p>
+                  </div>
+                  <div className="bg-f-bg rounded-lg px-2 py-2">
+                    <p className="text-white text-xs font-black truncate">{p.organizador || '—'}</p>
+                    <p className="text-f-muted text-xs">Organizador</p>
+                  </div>
+                </div>
+
+                {/* Fila 3: pagos */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex gap-2">
+                    {/* Pago de la cancha */}
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-lg border
+                      ${p.pagoCanchaConfirmado
+                        ? 'bg-green-950 border-green-800 text-green-300'
+                        : 'bg-f-surface border-f-border text-f-muted'}`}>
+                      {p.pagoCanchaConfirmado ? '💰 Pago cancha ✅' : '💰 Pago cancha ⏳'}
+                    </span>
+                    {/* Pagos jugadores */}
+                    {totalJugadores > 0 && (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-lg border bg-f-surface border-f-border text-f-muted">
+                        👥 {pagoJugadores}/{totalJugadores} pagaron
+                      </span>
+                    )}
+                  </div>
+                  {/* Precio */}
+                  {p.precioPorJugador > 0 && (
+                    <span className="text-f-accent text-xs font-bold flex-shrink-0">
+                      ${p.precioPorJugador?.toLocaleString('es-UY')}/jug
+                    </span>
+                  )}
+                </div>
+
+                {/* Motivo rechazo si cancelado */}
+                {p.estado === 'cancelado' && p.motivoRechazo && (
+                  <p className="text-red-400 text-xs bg-red-950/50 rounded-lg px-3 py-2">
+                    Motivo: {p.motivoRechazo}
+                  </p>
+                )}
+
+                {/* Botón eliminar */}
+                <button onClick={() => handleEliminar(p.id)}
+                  className="w-full py-2 rounded-xl border border-red-900/50 text-red-500 text-xs font-bold
+                             hover:bg-red-950 transition-colors active:scale-95">
+                  🗑️ Eliminar partido
+                </button>
+              </div>
             </div>
-            <span className={`text-xs font-bold px-2 py-1 rounded-lg border flex-shrink-0
-              ${p.activo ? 'bg-green-950 border-green-800 text-green-400'
-                : p.estado === 'lleno' ? 'bg-red-950 border-red-800 text-red-400'
-                : 'bg-f-surface border-f-border text-f-muted'}`}>
-              {p.activo ? 'Abierto' : p.estado === 'lleno' ? 'Lleno' : 'Cerrado'}
-            </span>
-            <button onClick={() => handleEliminar(p.id)}
-              className="p-2 rounded-lg border border-red-900 text-red-500 hover:bg-red-950 transition-colors flex-shrink-0">
-              🗑️
-            </button>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -241,7 +351,7 @@ function SeccionCanchas({ canchas }) {
                 📍 {c.barrio} · {c.tipo} · {c.modalidades?.join(', ')} · ${c.precioPorHora?.toLocaleString('es-UY')}/h
               </p>
               {c.whatsapp && (
-                <p className="text-green-400 text-xs">WhatsApp: {c.whatsapp}</p>
+                <p className="text-sky-400 text-xs">WhatsApp: {c.whatsapp}</p>
               )}
             </div>
             <div className="flex gap-2 flex-shrink-0">
@@ -436,7 +546,7 @@ function SeccionUsuarios({ usuarios, cargando, busqueda, setBusqueda, onRecargar
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   {suspendido ? (
                     <button onClick={() => handleLevantarBan(u.id)}
-                      className="text-xs font-bold px-3 py-1.5 rounded-lg bg-green-950 border border-green-800 text-green-400 active:scale-95">
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg bg-sky-950 border border-sky-800 text-sky-400 active:scale-95">
                       Levantar ban
                     </button>
                   ) : (
