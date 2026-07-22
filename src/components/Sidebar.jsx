@@ -52,20 +52,23 @@ export default function Sidebar({ tab, setTab }) {
       {/* Usuario */}
       {user && (
         <div className="mt-auto pt-4 border-t border-f-border">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-9 h-9 rounded-xl bg-f-green flex items-center justify-center overflow-hidden flex-shrink-0">
+          <button
+            onClick={() => setTab('perfil')}
+            className="flex items-center gap-3 px-2 w-full rounded-xl py-2 transition-all active:scale-95"
+            style={{ background: tab === 'perfil' ? 'rgba(84,181,240,0.08)' : 'transparent' }}>
+            <div className="w-10 h-10 rounded-xl bg-f-green flex items-center justify-center overflow-hidden flex-shrink-0">
               {user.photoURL
-                ? <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-                : <span className="text-white font-black">{(user.displayName||'U')[0]}</span>
+                ? <img src={user.photoURL.replace('=s96-c', '=s200-c')} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                : <span className="text-white font-black text-lg">{(user.displayName||'U')[0]}</span>
               }
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <p className="text-f-text text-sm font-bold truncate leading-tight">
                 {user.displayName?.split(' ')[0] || 'Jugador'}
               </p>
-              <p className="text-f-muted text-xs truncate">{perfil?.posicion || 'Montevideo'}</p>
+              <p className="text-f-muted text-xs truncate">{perfil?.posicion || 'Ver perfil'}</p>
             </div>
-          </div>
+          </button>
         </div>
       )}
     </aside>

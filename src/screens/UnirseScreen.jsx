@@ -13,9 +13,9 @@ export default function UnirseScreen({ onVerDetalle }) {
   const [cargando, setCargando] = useState(true);
   const [chatPartido, setChatPartido] = useState(null);
 
-  const estaBaneado = perfil?.bloqueado || (
-    perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
-  );
+  const estaBaneado = perfil?.bloqueado
+    || (perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date())
+    || perfil?.deudaPendiente;
 
   useEffect(() => {
     try {

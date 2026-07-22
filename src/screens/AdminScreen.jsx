@@ -57,6 +57,14 @@ export default function AdminScreen({ setTab }) {
     if (seccion === 'usuarios') cargarUsuarios();
   }, [seccion]);
 
+  const dosHoras = 2 * 60 * 60 * 1000;
+  const pagosVencidos = partidos.filter(p => {
+    if (p.pagoCanchaConfirmado) return false;
+    if (p.estado === 'cancelado') return false;
+    const f = new Date(p.fechaHora);
+    return new Date() > new Date(f.getTime() + dosHoras);
+  });
+
   const stats = {
     partidos: partidos.length,
     pendientes: partidos.filter(p => p.estado === 'pendiente').length,
@@ -81,6 +89,30 @@ export default function AdminScreen({ setTab }) {
             <p className="text-f-muted text-sm">Gestión de Falta 1</p>
           </div>
         </div>
+
+        {/* Alerta pagos vencidos */}
+        {pagosVencidos.length > 0 && (
+          <div className="mb-4 rounded-2xl px-4 py-3"
+               style={{ background: 'rgba(194,65,12,0.2)', border: '1px solid rgba(234,88,12,0.5)' }}>
+            <p className="text-orange-400 font-black text-sm uppercase">
+              ⚠️ {pagosVencidos.length} pago{pagosVencidos.length !== 1 ? 's' : ''} sin confirmar en cancha
+            </p>
+            <div className="mt-2 space-y-1">
+              {pagosVencidos.slice(0, 5).map(p => {
+                const f = new Date(p.fechaHora);
+                const haceHoras = Math.floor((new Date() - f) / 3600000);
+                return (
+                  <p key={p.id} className="text-orange-300/70 text-xs">
+                    · {p.nombreCancha} — {f.toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })} {f.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}hs (hace {haceHoras}hs) — Org: {p.organizador}
+                  </p>
+                );
+              })}
+              {pagosVencidos.length > 5 && (
+                <p className="text-orange-400/50 text-xs">y {pagosVencidos.length - 5} más...</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-4">

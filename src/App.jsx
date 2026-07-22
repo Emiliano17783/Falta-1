@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
-import { suscribirMisPartidos } from './firebase/firestore';
+import { suscribirMisPartidos, suscribirPartidosParaConfirmar } from './firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import CanchasScreen from './screens/CanchasScreen';
@@ -13,6 +13,7 @@ import UnirseScreen from './screens/UnirseScreen';
 import BottomNav from './components/BottomNav';
 import Sidebar from './components/Sidebar';
 import ChatModal from './modals/ChatModal';
+import ConfirmacionAsistenciaModal from './modals/ConfirmacionAsistenciaModal';
 
 export default function App() {
   const { user, loading, esCancha, esAdmin } = useAuth();
@@ -21,6 +22,8 @@ export default function App() {
   const [partidoDetalle, setPartidoDetalle] = useState(null);
   const [chatPartido, setChatPartido] = useState(null);
   const [toastGlobal, setToastGlobal] = useState(null);
+  const [partidosParaConfirmar, setPartidosParaConfirmar] = useState([]);
+  const [pagosVencidosOrganizador, setPagosVencidosOrganizador] = useState([]);
   const estadosAnteriores = useRef({});
 
   useEffect(() => {
@@ -42,7 +45,24 @@ export default function App() {
         anteriores[p.id + '_pago'] = p.pagoCanchaConfirmado;
       });
       estadosAnteriores.current = anteriores;
+
+      // Recordatorio: partidos donde el organizador no pagó en caja después de 2hs
+      const dosHoras = 2 * 60 * 60 * 1000;
+      const ahora = new Date();
+      const vencidos = partidos.filter(p =>
+        p.creadoPor === user.uid &&
+        !p.pagoCanchaConfirmado &&
+        p.estado !== 'cancelado' &&
+        ahora > new Date(new Date(p.fechaHora).getTime() + dosHoras)
+      );
+      setPagosVencidosOrganizador(vencidos);
     });
+    return () => unsub();
+  }, [user, esCancha]);
+
+  useEffect(() => {
+    if (!user || esCancha) return;
+    const unsub = suscribirPartidosParaConfirmar(user.uid, setPartidosParaConfirmar);
     return () => unsub();
   }, [user, esCancha]);
 
@@ -126,13 +146,34 @@ export default function App() {
           {toastGlobal}
         </div>
       )}
+
+      {/* Banner: recordatorio de pago en caja al organizador */}
+      {pagosVencidosOrganizador.length > 0 && (
+        <div className="fixed top-0 left-0 right-0 z-40 px-5 py-3 text-center"
+             style={{ background: 'rgba(234,88,12,0.95)', backdropFilter: 'blur(8px)' }}>
+          <p className="text-white font-black text-sm">
+            ⚠️ Acordate de pagar en caja — {pagosVencidosOrganizador.length > 1
+              ? `tenés ${pagosVencidosOrganizador.length} partidos con pago pendiente`
+              : `"${pagosVencidosOrganizador[0].nombreCancha}" espera tu pago`}
+          </p>
+        </div>
+      )}
+
       <Sidebar tab={tab} setTab={changeTab} esAdmin={esAdmin} />
-      <main className="app-main">
+      <main className="app-main" style={pagosVencidosOrganizador.length > 0 ? { paddingTop: '44px' } : {}}>
         {renderScreen()}
       </main>
       <BottomNav tab={tab} setTab={changeTab} />
       {chatPartido && (
         <ChatModal partido={chatPartido} onClose={() => setChatPartido(null)} />
+      )}
+
+      {/* Modal: confirmación de asistencia post-partido */}
+      {partidosParaConfirmar.length > 0 && (
+        <ConfirmacionAsistenciaModal
+          partido={partidosParaConfirmar[0]}
+          onDone={() => {}}
+        />
       )}
     </div>
   );

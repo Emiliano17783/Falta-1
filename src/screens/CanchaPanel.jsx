@@ -40,6 +40,14 @@ export default function CanchaPanel() {
     return f.toDateString() === hoy.toDateString() && p.estado === 'confirmado';
   });
 
+  const dosHoras = 2 * 60 * 60 * 1000;
+  const pagosVencidos = todosPartidos.filter(p => {
+    if (p.pagoCanchaConfirmado) return false;
+    if (p.estado === 'cancelado') return false;
+    const f = new Date(p.fechaHora);
+    return new Date() > new Date(f.getTime() + dosHoras);
+  });
+
   const handleConfirmar = async (partidoId) => {
     setProcesando(prev => ({ ...prev, [partidoId]: 'confirmando' }));
     try {
@@ -102,12 +110,25 @@ export default function CanchaPanel() {
           </button>
         </div>
 
+        {/* Alerta pagos vencidos */}
+        {pagosVencidos.length > 0 && (
+          <div className="mt-4 rounded-2xl px-4 py-3"
+               style={{ background: 'rgba(194,65,12,0.2)', border: '1px solid rgba(234,88,12,0.4)' }}>
+            <p className="text-orange-400 font-black text-sm uppercase">
+              ⚠️ {pagosVencidos.length} pago{pagosVencidos.length !== 1 ? 's' : ''} sin confirmar
+            </p>
+            <p className="text-orange-300/70 text-xs mt-0.5">
+              Hay partidos de hace más de 2 horas con pago pendiente. El organizador debería haber pagado en caja.
+            </p>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex gap-2 mt-5">
           {[
             { id: 'solicitudes', label: 'Solicitudes', badge: pendientes.length },
             { id: 'hoy', label: 'Hoy', badge: partidos_hoy.length },
-            { id: 'todos', label: 'Todos los partidos', badge: null },
+            { id: 'todos', label: 'Todos los partidos', badge: pagosVencidos.length || null },
           ].map(t => (
             <button key={t.id} onClick={() => setSeccion(t.id)}
               className={`relative px-4 py-2 rounded-xl font-bold text-sm uppercase border transition-all

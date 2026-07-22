@@ -5,23 +5,14 @@ import { actualizarPerfil, suscribirMisPartidos } from '../firebase/firestore';
 const POSICIONES = ['Arquero', 'Defensa', 'Mediocampista', 'Delantero', 'Por definir'];
 const NIVELES_PADEL = ['Principiante', 'Intermedio', 'Avanzado'];
 
-const INSIGNIAS_INFO = {
-  'capitan_frecuente':  { icon: '🏆', label: 'Capitán frecuente',   desc: 'Organizaste 5 o más partidos' },
-  'sin_cancelaciones':  { icon: '✅', label: 'Sin cancelaciones',    desc: 'Nunca cancelaste con menos de 3 horas' },
-  'respuesta_rapida':   { icon: '⚡', label: 'Respuesta rápida',     desc: 'Siempre respondés rápido' },
-  'buen_companero':     { icon: '🤝', label: 'Buen compañero',       desc: 'Valorado por otros jugadores' },
-  'padelero_top':       { icon: '🎾', label: 'Padelero top',         desc: 'Jugaste 10 o más partidas de pádel' },
-};
-
-// Niveles de carrera estilo Appito — adaptados al Uruguay
+// Niveles de carrera
 const NIVELES_CARRERA = [
-  { min: 0,  max: 5,  titulo: 'Peladero',        color: '#cd7f32', tier: 'bronce' },
-  { min: 6,  max: 15, titulo: 'Rey de la Pelada', color: '#c0c0c0', tier: 'plata' },
-  { min: 16, max: 30, titulo: 'Promesa',          color: '#ffd700', tier: 'oro' },
-  { min: 31, max: 50, titulo: 'Profesional',      color: '#ffd700', tier: 'oro' },
-  { min: 51, max: 80, titulo: 'Crack',            color: '#54b5f0', tier: 'platino' },
-  { min: 81, max: 120,titulo: 'Ídolo',            color: '#54b5f0', tier: 'platino' },
-  { min: 121,max: 999,titulo: 'LEYENDA',          color: '#54b5f0', tier: 'platino' },
+  { min: 0,   max: 15,  titulo: 'Principiante', color: '#cd7f32', tier: 'bronce' },
+  { min: 16,  max: 30,  titulo: 'Promesa',      color: '#c0c0c0', tier: 'plata' },
+  { min: 31,  max: 50,  titulo: 'Crack',        color: '#ffd700', tier: 'oro' },
+  { min: 51,  max: 80,  titulo: 'Profesional',  color: '#f59e0b', tier: 'oro' },
+  { min: 81,  max: 120, titulo: 'Ídolo',        color: '#54b5f0', tier: 'platino' },
+  { min: 121, max: 999, titulo: 'Leyenda',      color: '#a78bfa', tier: 'platino' },
 ];
 
 function getNivelCarrera(partidosJugados) {
@@ -44,11 +35,9 @@ const HISTORIAL_DEMO = [
   { cancha: '2 Cabezas F5',    fecha: '24 jun', deporte: 'futbol', resultado: 'Asistió ✅' },
 ];
 
-// Demo — "Sebas V." con 27 partidos jugados, 5 estrellas, 0 no-shows, todas las insignias
 const PERFIL_DEMO = {
   nombre: 'Sebas V.', posicion: 'Mediocampista', ciudad: 'Montevideo',
   partidosJugados: 27, reputacion: 5, noShows: 0,
-  insignias: ['capitan_frecuente', 'sin_cancelaciones', 'respuesta_rapida', 'buen_companero', 'padelero_top'],
   penalizacionHasta: null, bloqueado: false, advertencia: false,
 };
 
@@ -82,19 +71,20 @@ export default function PerfilScreen({ setTab }) {
     setEditando(false);
   };
 
-
   return (
     <div className="min-h-svh bg-f-bg pb-28">
 
-      {/* Header mínimo */}
-      <div className="px-5 pt-10 pb-4">
+      {/* Header con gradiente sutil */}
+      <div className="px-5 pt-10 pb-4"
+           style={{ background: `linear-gradient(to bottom, ${nivel.color}12 0%, transparent 100%)` }}>
         <h1 className="text-f-text font-black text-2xl uppercase tracking-tight">Mi perfil</h1>
       </div>
 
       <div className="px-4 md:px-12 space-y-4">
 
         {/* ── TARJETA FIFA ─────────────────────────────────────── */}
-        <div className={`player-card ${nivel.tier}`}>
+        <div className={`player-card ${nivel.tier}`}
+             style={{ borderTop: `3px solid ${nivel.color}` }}>
           {/* Overall + tier */}
           <div className="flex items-start justify-between mb-5">
             <div className="text-left">
@@ -126,8 +116,8 @@ export default function PerfilScreen({ setTab }) {
             </div>
           </div>
 
-          {/* Nombre y posición */}
-          <p className="text-f-text text-xl font-black uppercase leading-tight">
+          {/* Nombre con color del nivel */}
+          <p className="text-xl font-black uppercase leading-tight" style={{ color: nivel.color }}>
             {user?.displayName || p.nombre}
           </p>
 
@@ -168,6 +158,16 @@ export default function PerfilScreen({ setTab }) {
             )}
           </div>
         </div>
+
+        {/* ── DEUDA PENDIENTE ──────────────────────────────────── */}
+        {perfil?.deudaPendiente && !perfil?.bloqueado && (
+          <div className="bg-yellow-950/60 border border-yellow-700/50 rounded-2xl p-4">
+            <p className="text-yellow-400 font-black text-base uppercase">⚠️ Deuda pendiente</p>
+            <p className="text-yellow-300/80 text-sm mt-1">
+              Tenés un pago pendiente de un partido anterior. No podés anotarte a nuevos partidos hasta que lo saldes con el organizador.
+            </p>
+          </div>
+        )}
 
         {/* ── ALERTA PENALIZACIÓN ──────────────────────────────── */}
         {p.bloqueado && (
@@ -241,9 +241,19 @@ export default function PerfilScreen({ setTab }) {
         <div className="card p-5">
           <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Estadísticas</p>
           <div className="grid grid-cols-3 gap-4 mb-5">
-            <StatBox valor={p.partidosJugados} label="Partidos" color="#54b5f0" />
-            <StatBox valor={`${p.reputacion}/5`} label="Reputación" color="#fbbf24" />
-            <StatBox valor={p.noShows || 0} label="No-shows" color={p.noShows > 0 ? '#f87171' : '#54b5f0'} />
+            <div className="text-center p-3 rounded-xl" style={{ background: 'rgba(84,181,240,0.06)' }}>
+              <p className="text-3xl font-black" style={{ color: '#54b5f0' }}>{p.partidosJugados}</p>
+              <p className="text-f-muted text-xs font-bold uppercase mt-0.5">Partidos</p>
+            </div>
+            <div className="text-center p-3 rounded-xl" style={{ background: 'rgba(251,191,36,0.06)' }}>
+              <p className="text-3xl font-black" style={{ color: '#fbbf24' }}>{p.reputacion}/5</p>
+              <p className="text-f-muted text-xs font-bold uppercase mt-0.5">Reputación</p>
+            </div>
+            <div className="text-center p-3 rounded-xl"
+                 style={{ background: p.noShows > 0 ? 'rgba(248,113,113,0.06)' : 'rgba(84,181,240,0.06)' }}>
+              <p className="text-3xl font-black" style={{ color: p.noShows > 0 ? '#f87171' : '#54b5f0' }}>{p.noShows || 0}</p>
+              <p className="text-f-muted text-xs font-bold uppercase mt-0.5">No-shows</p>
+            </div>
           </div>
           {/* Barra progreso hacia siguiente nivel */}
           <div>
@@ -255,7 +265,7 @@ export default function PerfilScreen({ setTab }) {
               <div className="h-full rounded-full transition-all duration-700"
                    style={{
                      width: `${Math.min(100, ((p.partidosJugados - nivel.min) / (nivel.max - nivel.min + 1)) * 100)}%`,
-                     background: nivel.color,
+                     background: `linear-gradient(to right, ${nivel.color}80, ${nivel.color})`,
                    }} />
             </div>
             {nivel.max < 999 && (
@@ -320,43 +330,16 @@ export default function PerfilScreen({ setTab }) {
           </div>
         </div>
 
-        {/* ── INSIGNIAS ────────────────────────────────────────── */}
-        <div className="card p-5">
-          <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Insignias</p>
-          {p.insignias && p.insignias.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {p.insignias.map(key => {
-                const info = INSIGNIAS_INFO[key];
-                if (!info) return null;
-                return (
-                  <div key={key} className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-f-border bg-f-surface">
-                    <span className="text-2xl flex-shrink-0">{info.icon}</span>
-                    <div className="min-w-0">
-                      <p className="text-f-text text-xs font-black leading-tight">{info.label}</p>
-                      <p className="text-f-muted text-xs leading-tight mt-0.5">{info.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <p className="text-f-muted text-sm">Todavía no tenés insignias</p>
-              <p className="text-f-muted text-xs mt-1">Jugá más partidos para ganarlas</p>
-            </div>
-          )}
-        </div>
-
         {/* ── REGLAS DE PENALIZACIÓN ──────────────────────────── */}
         <div className="card p-5">
-          <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-4">Sistema de penalizaciones</p>
+          <p className="text-white font-black text-base uppercase mb-4">Sistema de penalizaciones</p>
           <div className="space-y-3">
             {[
-              { icon: '✅', texto: 'Cancelás con +3 horas de anticipación → sin penalización' },
-              { icon: '⚠️', texto: 'Cancelás con −3 horas → depósito pendiente a criterio del organizador' },
-              { icon: '📉', texto: 'No aparecés sin avisar (no-show) → reputación baja 0.5 puntos' },
-              { icon: '🔴', texto: '2 no-shows → suspensión de 7 días' },
-              { icon: '⛔', texto: '3 no-shows → cuenta bloqueada permanentemente' },
+              { icon: '✅', texto: 'Cancelás con +3 horas → Sin penalización' },
+              { icon: '⚠️', texto: 'Cancelás con −3 horas → Primer aviso (antes de suspensión)' },
+              { icon: '🔴', texto: 'No aparecés sin avisar → Suspensión 7 días' },
+              { icon: '🔴', texto: '2 veces no aparecés → Suspensión 1 mes' },
+              { icon: '🔴', texto: '3 veces no aparecés → Cuenta bloqueada permanentemente' },
             ].map((r, i) => (
               <div key={i} className="flex items-start gap-3">
                 <span className="text-lg w-7 text-center flex-shrink-0 mt-0.5">{r.icon}</span>
@@ -387,15 +370,6 @@ export default function PerfilScreen({ setTab }) {
           Falta 1 — ⚽ Fútbol · 🎾 Pádel · Montevideo 🇺🇾
         </p>
       </div>
-    </div>
-  );
-}
-
-function StatBox({ valor, label, color }) {
-  return (
-    <div className="text-center p-3 rounded-xl" style={{ background: `${color}08` }}>
-      <p className="text-3xl font-black" style={{ color }}>{valor}</p>
-      <p className="text-f-muted text-xs font-bold uppercase mt-0.5">{label}</p>
     </div>
   );
 }

@@ -4,10 +4,11 @@ export default function BottomNav({ tab, setTab }) {
   const [abierto, setAbierto] = useState(false);
 
   const tabs = [
-    { id: 'inicio',  label: 'Inicio',  icon: <HomeIcon /> },
-    { id: 'canchas', label: 'Canchas', icon: <CanchaIcon /> },
-    { id: 'crear',   label: 'Crear',   icon: <PlusIcon />, destacado: true },
-    { id: 'perfil',  label: 'Perfil',  icon: <PerfilIcon /> },
+    { id: 'inicio',  label: 'Inicio',          icon: <HomeIcon /> },
+    { id: 'unirse',  label: 'Unirme',           icon: <UnirseIcon /> },
+    { id: 'crear',   label: 'Crear partido',    icon: <PlusIcon />, destacado: true },
+    { id: 'canchas', label: 'Canchas',          icon: <CanchaIcon /> },
+    { id: 'perfil',  label: 'Perfil',           icon: <PerfilIcon /> },
   ];
 
   const navegar = (id) => {
@@ -17,16 +18,16 @@ export default function BottomNav({ tab, setTab }) {
 
   return (
     <>
-      {/* Overlay oscuro cuando el sheet está abierto */}
+      {/* Overlay oscuro (mobile y desktop) */}
       {abierto && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40"
           style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAbierto(false)}
         />
       )}
 
-      {/* Bottom sheet con los tabs */}
+      {/* ── MOBILE: bottom sheet ── */}
       <div
         className="fixed left-0 right-0 bottom-0 z-50 md:hidden"
         style={{
@@ -38,22 +39,16 @@ export default function BottomNav({ tab, setTab }) {
           padding: '10px 16px 36px',
         }}
       >
-        {/* Handle decorativo */}
         <div className="flex justify-center mb-4">
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)' }} />
         </div>
-
-        {/* Grid de 4 tabs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6 }}>
           {tabs.map(({ id, label, icon, destacado }) => (
             <button
               key={id}
               onClick={() => navegar(id)}
               className="flex flex-col items-center justify-center gap-1 py-3 rounded-xl active:scale-90 transition-all"
-              style={{
-                background: tab === id ? 'rgba(84,181,240,0.1)' : 'transparent',
-                border: 'none',
-              }}
+              style={{ background: tab === id ? 'rgba(84,181,240,0.1)' : 'transparent', border: 'none' }}
             >
               {destacado ? (
                 <div
@@ -68,17 +63,11 @@ export default function BottomNav({ tab, setTab }) {
                   <span style={{ color: '#ffffff' }}>{icon}</span>
                 </div>
               ) : (
-                <div style={{ color: tab === id ? '#54b5f0' : '#5a5a5a' }}>
-                  {icon}
-                </div>
+                <div style={{ color: tab === id ? '#54b5f0' : '#5a5a5a' }}>{icon}</div>
               )}
               <span
                 className="font-black uppercase"
-                style={{
-                  fontSize: 10,
-                  letterSpacing: '0.06em',
-                  color: tab === id ? '#54b5f0' : '#5a5a5a',
-                }}
+                style={{ fontSize: 10, letterSpacing: '0.06em', color: tab === id ? '#54b5f0' : '#5a5a5a' }}
               >
                 {label}
               </span>
@@ -87,9 +76,49 @@ export default function BottomNav({ tab, setTab }) {
         </div>
       </div>
 
-      {/* Botón flotante para abrir/cerrar */}
+      {/* ── DESKTOP: panel lateral derecho ── */}
+      {abierto && (
+        <div
+          className="fixed top-0 right-0 bottom-0 z-50 hidden md:flex flex-col"
+          style={{
+            width: 260,
+            background: '#111111',
+            borderLeft: '1px solid rgba(255,255,255,0.07)',
+            padding: '32px 16px 28px',
+          }}
+        >
+          <p className="text-f-muted text-[10px] font-black uppercase tracking-[0.2em] mb-4 px-2">
+            Navegación
+          </p>
+          <div className="flex flex-col gap-1">
+            {tabs.map(({ id, label, icon, destacado }) => (
+              <button
+                key={id}
+                onClick={() => navegar(id)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-black text-sm uppercase tracking-wide text-left transition-all active:scale-95 w-full"
+                style={destacado
+                  ? {
+                      background: '#0ea5e9',
+                      color: '#0c0c0c',
+                      marginTop: 8,
+                      boxShadow: '0 4px 20px rgba(14,165,233,0.35)',
+                    }
+                  : {
+                      background: tab === id ? 'rgba(84,181,240,0.08)' : 'transparent',
+                      color: tab === id ? '#54b5f0' : '#5a5a5a',
+                    }}
+              >
+                <span>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Botón flotante — funciona en mobile Y desktop ── */}
       <button
-        className="fixed z-50 md:hidden active:scale-90 transition-all"
+        className="fixed z-50 active:scale-90 transition-all"
         style={{
           bottom: 20,
           right: 20,
@@ -132,6 +161,11 @@ function PlusIcon() {
 function PerfilIcon() {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+  </svg>;
+}
+function UnirseIcon() {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
   </svg>;
 }
 function MenuIcon() {

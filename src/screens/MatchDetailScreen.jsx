@@ -4,6 +4,7 @@ import {
   anotarseAPartido,
   desanotarseDePartido,
   registrarPagoJugador,
+  levantarDeudaJugador,
 } from '../firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,9 +14,9 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
   const [cargando, setCargando] = useState(true);
   const [accion, setAccion] = useState(null);
 
-  const estaBaneado = perfil?.bloqueado || (
-    perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
-  );
+  const estaBaneado = perfil?.bloqueado
+    || (perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date())
+    || perfil?.deudaPendiente;
 
   useEffect(() => {
     if (!partidoId) return;
@@ -89,6 +90,18 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
     await registrarPagoJugador(partido.id, jugadorUid, !marcado);
   };
 
+  const handleLevantarDeuda = async (jugadorUid) => {
+    if (!esOrganizador) return;
+    await levantarDeudaJugador(jugadorUid, partido.id);
+  };
+
+  const deudores = partido.deudores || [];
+  const dosHorasMs = 2 * 60 * 60 * 1000;
+  const pagoVencido = esOrganizador
+    && !partido.pagoCanchaConfirmado
+    && partido.estado !== 'cancelado'
+    && new Date() > new Date(new Date(partido.fechaHora).getTime() + dosHorasMs);
+
   return (
     <div className="min-h-svh bg-f-bg pb-28">
 
@@ -117,6 +130,28 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
             {partido.motivoRechazo && (
               <p className="text-red-300 text-sm mt-1">Motivo: {partido.motivoRechazo}</p>
             )}
+          </div>
+        )}
+
+        {/* ── Recordatorio de pago en caja (organizador, 2hs después) ── */}
+        {pagoVencido && (
+          <div className="rounded-2xl border border-orange-700/50 px-5 py-4"
+               style={{ background: 'rgba(194,65,12,0.15)' }}>
+            <p className="text-orange-400 font-black text-base uppercase">⚠️ Acordate de pagar en caja</p>
+            <p className="text-orange-300/80 text-sm mt-1">
+              El partido terminó hace más de 2 horas. Si todavía no pagaste la cancha, hacelo cuanto antes.
+            </p>
+          </div>
+        )}
+
+        {/* ── Banner deuda propia ── */}
+        {perfil?.deudaPendiente && !estaAnotado && (
+          <div className="rounded-2xl border border-yellow-700/50 px-5 py-4"
+               style={{ background: 'rgba(113,63,18,0.2)' }}>
+            <p className="text-yellow-400 font-black text-sm uppercase">⚠️ Deuda pendiente</p>
+            <p className="text-yellow-300/70 text-xs mt-1">
+              No podés anotarte a nuevos partidos hasta saldar tu deuda con el organizador de tu partido anterior.
+            </p>
           </div>
         )}
 
@@ -212,10 +247,14 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
               ) : jugadores.map((uid_j, idx) => {
                 const pagado = pagos[uid_j]?.marcadoPorOrganizador || false;
                 const esYo = uid_j === user?.uid;
+                const tieneDeuda = deudores.includes(uid_j);
                 return (
                   <div key={uid_j}
                     className="flex items-center justify-between px-3 py-2.5 rounded-xl border"
-                    style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.02)' }}>
+                    style={{
+                      borderColor: tieneDeuda ? 'rgba(234,179,8,0.25)' : 'rgba(255,255,255,0.06)',
+                      background: tieneDeuda ? 'rgba(113,63,18,0.1)' : 'rgba(255,255,255,0.02)',
+                    }}>
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
                            style={{ background: 'rgba(14,165,233,0.2)', border: '1px solid rgba(84,181,240,0.3)' }}>
@@ -225,28 +264,41 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
                         <p className="text-white text-sm font-bold">
                           Jugador {idx + 1}{esYo ? ' (vos)' : ''}
                         </p>
-                        <p className="text-yellow-400 text-xs font-bold">⚠️ Pago no verificado</p>
+                        {tieneDeuda
+                          ? <p className="text-yellow-400 text-xs font-bold">⚠️ Deuda pendiente</p>
+                          : <p className="text-f-muted text-xs">⚠️ Pago no verificado</p>
+                        }
                       </div>
                     </div>
-                    {esOrganizador ? (
-                      <button
-                        onClick={() => handleTogglePago(uid_j)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all active:scale-95 ${
+                    <div className="flex flex-col items-end gap-1.5">
+                      {esOrganizador ? (
+                        <button
+                          onClick={() => handleTogglePago(uid_j)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all active:scale-95 ${
+                            pagado
+                              ? 'bg-green-950 border-green-800 text-green-300'
+                              : 'border-f-border text-f-muted'
+                          }`}>
+                          {pagado ? 'Marcado ✓' : 'Marcar pago'}
+                        </button>
+                      ) : (
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-black border ${
                           pagado
                             ? 'bg-green-950 border-green-800 text-green-300'
                             : 'border-f-border text-f-muted'
                         }`}>
-                        {pagado ? 'Marcado ✓' : 'Marcar pago'}
-                      </button>
-                    ) : (
-                      <span className={`px-3 py-1.5 rounded-lg text-xs font-black border ${
-                        pagado
-                          ? 'bg-green-950 border-green-800 text-green-300'
-                          : 'border-f-border text-f-muted'
-                      }`}>
-                        {pagado ? 'Marcado ✓' : 'Pendiente'}
-                      </span>
-                    )}
+                          {pagado ? 'Marcado ✓' : 'Pendiente'}
+                        </span>
+                      )}
+                      {esOrganizador && tieneDeuda && (
+                        <button
+                          onClick={() => handleLevantarDeuda(uid_j)}
+                          className="px-3 py-1 rounded-lg text-xs font-black border transition-all active:scale-95"
+                          style={{ borderColor: 'rgba(74,222,128,0.3)', color: '#4ade80', background: 'rgba(22,163,74,0.1)' }}>
+                          Confirmó pago ✓
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -281,7 +333,7 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
               style={lleno || estaBaneado
                 ? { background: 'rgba(255,255,255,0.06)', color: '#5a5a5a', cursor: 'not-allowed' }
                 : { background: '#0ea5e9', color: '#fff', boxShadow: '0 4px 20px rgba(14,165,233,0.3)' }}>
-              {accion === 'anotando' ? '...' : lleno ? 'LLENO' : estaBaneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
+              {accion === 'anotando' ? '...' : lleno ? 'LLENO' : perfil?.deudaPendiente ? 'DEUDA PENDIENTE' : estaBaneado ? 'SUSPENDIDO' : '¡ME ANOTO!'}
             </button>
           )}
         </div>

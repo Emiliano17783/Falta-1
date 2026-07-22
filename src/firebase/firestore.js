@@ -62,6 +62,8 @@ export async function crearOActualizarUsuario(user) {
       insignias: [],
       penalizacionHasta: null,
       bloqueado: false,
+      deudaPendiente: false,
+      deudaPartidoId: null,
       admin: false,
       rol: 'jugador',  // jugador | cancha | admin
       creadoEn: serverTimestamp(),
@@ -249,6 +251,12 @@ export async function anotarseAPartido(partidoId, uid) {
     throw new Error('El partido está lleno');
   }
 
+  // Verificar deuda pendiente
+  const userSnap = await getDoc(doc(db, 'usuarios', uid));
+  if (userSnap.exists() && userSnap.data().deudaPendiente) {
+    throw new Error('Tenés una deuda pendiente de un partido anterior');
+  }
+
   const nuevosAnotados = (partido.jugadoresAnotados || 0) + 1;
   const lleno = nuevosAnotados >= partido.cupoTotal;
 
@@ -294,26 +302,90 @@ async function aplicarPenalizacion(uid, esNoShow = false) {
   const updates = {};
 
   if (esNoShow) {
-    // No-show: baja reputación 0.5 puntos + incrementa contador
     const noShows = (userData.noShows || 0) + 1;
     updates.noShows = noShows;
-    updates.reputacion = Math.max(1, (userData.reputacion || 5) - 0.5);
 
     if (noShows >= 3) {
-      // 3 o más no-shows: bloqueo permanente
+      // 3+ no-shows: bloqueo permanente
       updates.bloqueado = true;
     } else if (noShows >= 2) {
-      // 2 no-shows: suspensión por 7 días
+      // 2 no-shows: suspensión 1 mes
+      const hasta = new Date();
+      hasta.setMonth(hasta.getMonth() + 1);
+      updates.penalizacionHasta = hasta.toISOString();
+    } else {
+      // 1 no-show: suspensión 7 días
       const hasta = new Date();
       hasta.setDate(hasta.getDate() + 7);
       updates.penalizacionHasta = hasta.toISOString();
     }
   } else {
-    // Cancelación con menos de 3 horas: depósito pendiente (sin penalización de reputación)
+    // Cancelación con menos de 3 horas → primer aviso
     updates.advertencia = true;
   }
 
   await updateDoc(userRef, updates);
+}
+
+// ─── POST-PARTIDO ─────────────────────────────────────────────────────────────
+
+// Organizador confirma quiénes asistieron y quiénes pagaron
+export async function confirmarAsistenciaPartido(partidoId, noAsistentesUids = [], noPagadoresUids = []) {
+  await updateDoc(doc(db, 'partidos', partidoId), {
+    asistenciaConfirmada: true,
+    noAsistentes: noAsistentesUids,
+    deudores: noPagadoresUids,
+    estado: 'finalizado',
+    asistenciaConfirmadaEn: serverTimestamp(),
+  });
+
+  // Aplicar penalización de no-show a quienes no asistieron
+  for (const uid of noAsistentesUids) {
+    await aplicarPenalizacion(uid, true);
+  }
+
+  // Marcar deuda en perfil de quienes no pagaron
+  for (const uid of noPagadoresUids) {
+    await updateDoc(doc(db, 'usuarios', uid), {
+      deudaPendiente: true,
+      deudaPartidoId: partidoId,
+    });
+  }
+}
+
+// Organizador confirma que un jugador le pagó la deuda → levanta la deuda
+export async function levantarDeudaJugador(jugadorUid, partidoId) {
+  await updateDoc(doc(db, 'usuarios', jugadorUid), {
+    deudaPendiente: false,
+    deudaPartidoId: null,
+  });
+  if (partidoId) {
+    await updateDoc(doc(db, 'partidos', partidoId), {
+      deudores: arrayRemove(jugadorUid),
+    });
+  }
+}
+
+// Suscribirse a partidos del organizador que necesitan confirmación de asistencia
+export function suscribirPartidosParaConfirmar(uid, callback) {
+  const q = query(
+    collection(db, 'partidos'),
+    where('creadoPor', '==', uid),
+    limit(30),
+  );
+  return onSnapshot(q, (snap) => {
+    const ahora = new Date();
+    const noventaMin = 90 * 60 * 1000;
+    const pendientes = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => {
+        if (p.asistenciaConfirmada) return false;
+        if (!['confirmado', 'lleno'].includes(p.estado)) return false;
+        const fecha = new Date(p.fechaHora);
+        return ahora > new Date(fecha.getTime() + noventaMin);
+      });
+    callback(pendientes);
+  });
 }
 
 export async function eliminarPartido(partidoId, uid) {
