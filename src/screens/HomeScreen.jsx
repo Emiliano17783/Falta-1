@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, onSnapshot, getDocs, where } from 'firebase/firestore';
+import { collection, query, onSnapshot, getDocs, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { CANCHAS } from '../data/canchas';
@@ -8,7 +8,6 @@ export default function HomeScreen({ setTab }) {
   const { perfil } = useAuth();
   const [partidosHoy, setPartidosHoy] = useState(null);
   const [jugadores, setJugadores] = useState(null);
-  const [ultimosPartidos, setUltimosPartidos] = useState([]);
 
   const estaBaneado = perfil?.bloqueado || (
     perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
@@ -34,16 +33,6 @@ export default function HomeScreen({ setTab }) {
     getDocs(collection(db, 'usuarios'))
       .then(snap => setJugadores(snap.size))
       .catch(() => setJugadores(0));
-  }, []);
-
-  // Últimos 3 partidos creados
-  useEffect(() => {
-    try {
-      const q = query(collection(db, 'partidos'), orderBy('creadoEn', 'desc'), limit(3));
-      return onSnapshot(q, snap => {
-        setUltimosPartidos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-    } catch { return () => {}; }
   }, []);
 
   return (
@@ -115,75 +104,6 @@ export default function HomeScreen({ setTab }) {
           <span className="mx-2 text-f-border">·</span>
           <span className="text-f-text font-bold">{CANCHAS.length}</span> canchas disponibles
         </p>
-      </div>
-
-      {/* ── ÚLTIMOS PARTIDOS ── */}
-      <div className="px-5 md:px-12 border-b border-f-border pt-6 pb-1">
-        <p className="text-f-muted text-[11px] font-black uppercase tracking-[0.2em] mb-4">
-          Últimos partidos
-        </p>
-        {ultimosPartidos.length === 0 ? (
-          <p className="text-f-muted text-sm pb-5">Todavía no hay partidos creados.</p>
-        ) : (
-          ultimosPartidos.map((p, i) => {
-            const fecha   = p.fechaHora ? new Date(p.fechaHora) : null;
-            const hoy     = new Date();
-            const esHoy   = fecha?.toDateString() === hoy.toDateString();
-            const diaLabel = !fecha ? '' : esHoy
-              ? 'Hoy'
-              : fecha.toLocaleDateString('es-UY', { weekday: 'long', day: 'numeric', month: 'short' });
-            const hora    = fecha ? fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' }) : '';
-            const faltan  = (p.cupoTotal ?? 10) - (p.jugadoresAnotados ?? 0);
-            const deporte = p.deporte === 'padel' ? 'Pádel' : p.modalidad === 'F7' ? 'F7' : 'F5';
-
-            return (
-              <div key={p.id}
-                className={`py-4 ${i < ultimosPartidos.length - 1 ? 'border-b border-f-border' : 'pb-5'}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-white font-bold text-sm leading-tight truncate">
-                      {p.nombreCancha || 'Sin nombre'}
-                    </p>
-                    <p className="text-f-muted text-xs mt-1">
-                      {[p.barrio, diaLabel && `${diaLabel}${hora ? ` ${hora}hs` : ''}`, deporte]
-                        .filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  <p className="text-xs font-black flex-shrink-0 pt-0.5"
-                     style={{ color: faltan <= 2 ? '#f97316' : '#54b5f0' }}>
-                    {faltan > 0 ? `Faltan ${faltan}` : 'Completo'}
-                  </p>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* ── ACCIONES RÁPIDAS ── */}
-      <div className="px-4 md:px-12 py-6 flex flex-col gap-3">
-        <button onClick={() => setTab?.('unirse')}
-          className="w-full py-4 rounded-2xl font-black text-base uppercase flex items-center justify-between px-5 transition-all active:scale-95"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f2f5eb' }}>
-          <span>Ver partidos disponibles</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
-          </svg>
-        </button>
-        <button onClick={() => setTab?.('canchas')}
-          className="w-full py-4 rounded-2xl font-black text-base uppercase flex items-center justify-between px-5 transition-all active:scale-95"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#f2f5eb' }}>
-          <span>Ver canchas</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* ── FOOTER ── */}
-      <div className="px-4 md:px-12 py-8 border-t border-f-border pb-28 md:pb-10">
-        <p className="text-white font-black text-2xl uppercase mb-0.5">FALTA 1</p>
-        <p className="text-f-muted text-sm">Fútbol · Pádel · Montevideo</p>
       </div>
 
     </div>
