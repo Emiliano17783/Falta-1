@@ -24,6 +24,7 @@ export default function App() {
   const [toastGlobal, setToastGlobal] = useState(null);
   const [partidosParaConfirmar, setPartidosParaConfirmar] = useState([]);
   const [pagosVencidosOrganizador, setPagosVencidosOrganizador] = useState([]);
+  const [mostrarListaVencidos, setMostrarListaVencidos] = useState(false);
   const estadosAnteriores = useRef({});
 
   useEffect(() => {
@@ -149,18 +150,40 @@ export default function App() {
 
       {/* Banner: recordatorio de pago en caja al organizador */}
       {pagosVencidosOrganizador.length > 0 && (
-        <div className="fixed top-0 left-0 right-0 z-40 px-5 py-3 text-center"
+        <div className="fixed top-0 left-0 right-0 z-40"
              style={{ background: 'rgba(234,88,12,0.95)', backdropFilter: 'blur(8px)' }}>
-          <p className="text-white font-black text-sm">
-            ⚠️ Acordate de pagar en caja — {pagosVencidosOrganizador.length > 1
-              ? `tenés ${pagosVencidosOrganizador.length} partidos con pago pendiente`
-              : `"${pagosVencidosOrganizador[0].nombreCancha}" espera tu pago`}
-          </p>
+          <button onClick={() => setMostrarListaVencidos(v => !v)}
+                  className="w-full px-5 py-3 flex items-center justify-center gap-2">
+            <p className="text-white font-black text-sm">
+              ⚠️ Acordate de pagar en caja — {pagosVencidosOrganizador.length > 1
+                ? `${pagosVencidosOrganizador.length} partidos pendientes`
+                : `"${pagosVencidosOrganizador[0].nombreCancha}"`}
+            </p>
+            <span className="text-white/70 text-xs">{mostrarListaVencidos ? '▲' : '▼'}</span>
+          </button>
+          {mostrarListaVencidos && (
+            <div className="px-4 pb-3 flex flex-col gap-1.5">
+              {pagosVencidosOrganizador.map(p => (
+                <button key={p.id}
+                  onClick={() => { setPartidoDetalle(p); setMostrarListaVencidos(false); }}
+                  className="w-full text-left py-2.5 px-3 rounded-xl flex items-center justify-between"
+                  style={{ background: 'rgba(0,0,0,0.25)' }}>
+                  <div>
+                    <p className="text-white font-black text-sm">{p.nombreCancha}</p>
+                    <p className="text-orange-200 text-xs">
+                      {new Date(p.fechaHora).toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })} · {new Date(p.fechaHora).toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}hs
+                    </p>
+                  </div>
+                  <span className="text-white/70 text-xs font-bold">Ver →</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <Sidebar tab={tab} setTab={changeTab} esAdmin={esAdmin} />
-      <main className="app-main" style={pagosVencidosOrganizador.length > 0 ? { paddingTop: '44px' } : {}}>
+      <main className="app-main" style={pagosVencidosOrganizador.length > 0 ? { paddingTop: mostrarListaVencidos ? `${44 + pagosVencidosOrganizador.length * 60 + 12}px` : '44px' } : {}}>
         {renderScreen()}
       </main>
       <BottomNav tab={tab} setTab={changeTab} />
