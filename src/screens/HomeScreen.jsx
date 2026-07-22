@@ -72,7 +72,7 @@ export default function HomeScreen({ setTab }) {
       {/* ── HERO ── */}
       <div className="relative overflow-hidden flex flex-col justify-between"
            style={{ background: '#0c0c0c', height: '50vh', minHeight: 280 }}>
-        <video autoPlay muted loop playsInline
+        <video autoPlay muted loop playsInline preload="auto"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           style={{ opacity: 0.6 }}>
           <source src="/hero.mp4" type="video/mp4" />
