@@ -2,7 +2,7 @@ import {
  doc, setDoc, getDoc, updateDoc, deleteDoc, collection,
  query, where, orderBy, onSnapshot, addDoc,
  serverTimestamp, increment, arrayUnion, arrayRemove, getDocs,
- limit,
+ limit, runTransaction,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -767,4 +767,45 @@ export async function obtenerPerfilesJugadores(uids) {
  } catch { /* ignorar errores individuales */ }
  }));
  return perfiles;
+}
+
+// CÉDULAS DE IDENTIDAD
+
+// Verifica si una cédula está disponible (pre-chequeo no-transaccional)
+export async function verificarCedulaDisponible(cedula) {
+ const cedNorm = cedula.replace(/\D/g, '').padStart(8, '0');
+ const snap = await getDoc(doc(db, 'cedulas', cedNorm));
+ return !snap.exists();
+}
+
+// Reserva atómica: verifica unicidad, crea doc en cedulas y actualiza el perfil del usuario
+export async function reservarCedula(uid, cedula) {
+ const cedNorm = cedula.replace(/\D/g, '').padStart(8, '0');
+ await runTransaction(db, async (tx) => {
+ const cedulaRef = doc(db, 'cedulas', cedNorm);
+ const snap = await tx.get(cedulaRef);
+ if (snap.exists() && snap.data().uid !== uid) {
+ throw new Error('Esta cédula ya tiene una cuenta registrada. Usá la opción Ingresar.');
+ }
+ tx.set(cedulaRef, { uid });
+ tx.update(doc(db, 'usuarios', uid), { cedula: cedNorm });
+ });
+}
+
+// Admin: actualizar la cédula de un usuario (elimina la vieja y registra la nueva)
+export async function actualizarCedulaAdmin(uid, cedulaVieja, cedulaNueva) {
+ const cedNorm = cedulaNueva.replace(/\D/g, '').padStart(8, '0');
+ await runTransaction(db, async (tx) => {
+ if (cedulaVieja) {
+ const viejaNorm = cedulaVieja.replace(/\D/g, '').padStart(8, '0');
+ tx.delete(doc(db, 'cedulas', viejaNorm));
+ }
+ const nuevaRef = doc(db, 'cedulas', cedNorm);
+ const snap = await tx.get(nuevaRef);
+ if (snap.exists() && snap.data().uid !== uid) {
+ throw new Error('Esa cédula ya pertenece a otro usuario.');
+ }
+ tx.set(nuevaRef, { uid });
+ tx.update(doc(db, 'usuarios', uid), { cedula: cedNorm });
+ });
 }

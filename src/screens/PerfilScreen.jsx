@@ -4,6 +4,7 @@ import { auth } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { actualizarPerfil, actualizarFotoPerfil, suscribirMisPartidos } from '../firebase/firestore';
 import { CIUDADES } from '../data/canchas';
+import { formatearCedula } from '../utils/cedula';
 
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'g4toapow';
 const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'falta1_uploads';
@@ -300,6 +301,9 @@ export default function PerfilScreen({ setTab, onVerDetalle }) {
  {perfil?.nombre || user?.displayName || p.nombre}
  </p>
  <p className="text-f-muted text-sm mt-1">{p.posicion} · {p.ciudad}</p>
+ {perfil?.cedula && (
+ <p className="text-xs mt-1" style={{ color: '#3a3a3a' }}>CI {formatearCedula(perfil.cedula)}</p>
+ )}
 
  {/* Botón editar perfil */}
  <div className="mt-5">

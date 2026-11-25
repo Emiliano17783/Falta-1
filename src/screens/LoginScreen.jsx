@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
+import { validarCedula, formatearCedula } from '../utils/cedula';
+import { verificarCedulaDisponible, reservarCedula } from '../firebase/firestore';
 
 export default function LoginScreen() {
  const { loginConGoogle, loginConEmail, resetearPassword } = useAuth();
@@ -296,6 +298,7 @@ function TabRegistro() {
  const [nombre, setNombre] = useState('');
  const [email, setEmail] = useState('');
  const [telefono, setTelefono] = useState('');
+ const [cedula, setCedula] = useState('');
  const [password, setPassword] = useState('');
  const [password2, setPassword2] = useState('');
  const [codigo, setCodigo] = useState('');
@@ -304,6 +307,8 @@ function TabRegistro() {
 
  const telefonoLimpio = telefono.replace(/\s/g, '');
  const telefonoValido = telefono === '' || /^09\d{7}$/.test(telefonoLimpio);
+ const cedulaDigitos = cedula.replace(/\D/g, '');
+ const cedulaValida = validarCedula(cedula);
 
  const handleTelefono = (e) => {
   const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
@@ -313,25 +318,38 @@ function TabRegistro() {
   setTelefono(formatted);
  };
 
+ const handleCedula = (e) => {
+  setCedula(e.target.value.replace(/\D/g, '').slice(0, 8));
+ };
+
  // Paso 1: validar datos y (si hay teléfono) enviar código por WhatsApp
  const enviarCodigo = async (e) => {
   e.preventDefault();
   if (password !== password2) { setError('Las contraseñas no coinciden.'); return; }
   if (password.length < 6) { setError('La contraseña necesita mínimo 6 caracteres.'); return; }
+  if (!cedulaValida) { setError('La cédula ingresada no es válida.'); return; }
   setCargando(true); setError(null);
   try {
+   // Pre-chequeo de unicidad antes de crear la cuenta
+   const disponible = await verificarCedulaDisponible(cedula);
+   if (!disponible) {
+    setError('Esta cédula ya tiene una cuenta registrada. Usá la opción Ingresar.');
+    setCargando(false);
+    return;
+   }
    if (telefonoLimpio) {
     const fn = httpsCallable(functions, 'enviarCodigoVerificacion');
     await fn({ telefono: telefonoLimpio });
     setCargando(false);
     setStep('codigo');
    } else {
-    // Sin teléfono → crear cuenta directo
-    await registrarConEmail(nombre.trim(), email.trim(), password, {});
+    // Sin teléfono → crear cuenta y reservar cédula
+    const newUser = await registrarConEmail(nombre.trim(), email.trim(), password, {});
+    await reservarCedula(newUser.uid, cedula);
    }
   } catch (err) {
    const msgs = {
-    'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción "Ingresar".',
+    'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción Ingresar.',
     'auth/invalid-email': 'El email no es válido.',
     'auth/weak-password': 'La contraseña es demasiado débil (mínimo 6 caracteres).',
     'functions/invalid-argument': 'Número de teléfono inválido.',
@@ -351,15 +369,16 @@ function TabRegistro() {
   try {
    const fn = httpsCallable(functions, 'verificarCodigoVerificacion');
    await fn({ telefono: telefonoLimpio, codigo });
-   // Código correcto → crear cuenta con teléfono verificado
-   await registrarConEmail(nombre.trim(), email.trim(), password, { telefono: telefonoLimpio });
+   // Código correcto → crear cuenta con teléfono verificado y reservar cédula
+   const newUser = await registrarConEmail(nombre.trim(), email.trim(), password, { telefono: telefonoLimpio });
+   await reservarCedula(newUser.uid, cedula);
   } catch (err) {
    const msgs = {
     'functions/unauthenticated': 'Código incorrecto. Revisá el mensaje y volvé a intentar.',
     'functions/deadline-exceeded': 'El código venció. Volvé atrás y pedí uno nuevo.',
     'functions/not-found': 'No hay código activo. Volvé atrás y pedí uno nuevo.',
     'functions/resource-exhausted': 'Demasiados intentos. Volvé atrás y pedí un código nuevo.',
-    'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción "Ingresar".',
+    'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción Ingresar.',
    };
    setError(msgs[err.code] || err.message || 'Error al verificar. Intentá de nuevo.');
    setCargando(false);
@@ -406,6 +425,18 @@ function TabRegistro() {
    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
     placeholder="Email" required className="input-base" />
    <div>
+    <input type="text" inputMode="numeric" value={cedula}
+     onChange={handleCedula}
+     placeholder="Cédula de identidad (sin puntos ni guión)"
+     required className="input-base" />
+    {cedula && cedulaDigitos.length >= 7 && !cedulaValida && (
+     <p className="text-red-400 text-xs mt-1 px-1">La cédula ingresada no es válida.</p>
+    )}
+    {cedulaValida && (
+     <p className="text-green-400 text-xs mt-1 px-1 font-bold">{formatearCedula(cedula)}</p>
+    )}
+   </div>
+   <div>
     <div className="flex items-center gap-2">
      <span className="text-f-muted text-sm font-mono px-3 rounded-xl flex-shrink-0 flex items-center"
       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', height: '48px' }}>
@@ -429,7 +460,7 @@ function TabRegistro() {
     placeholder="Repetir contraseña" required className="input-base" />
    {error && <p className="text-red-400 text-sm">{error}</p>}
    <button type="submit"
-    disabled={cargando || !nombre || !email || !telefonoValido || !password || !password2}
+    disabled={cargando || !nombre || !email || !cedulaValida || !telefonoValido || !password || !password2}
     className="btn-lime mt-1">
     {cargando
      ? (telefonoLimpio ? 'Enviando código...' : 'Creando cuenta...')

@@ -3,10 +3,11 @@ import {
  obtenerTodosUsuarios, suscribirTodosPartidos,
  eliminarPartidoAdmin, banearUsuario, levantarBan,
  suscribirCanchas, crearCancha, actualizarCancha, eliminarCancha, seedCanchas,
- actualizarPerfil, obtenerUsuarioPorEmail, asignarRolCancha,
+ actualizarPerfil, obtenerUsuarioPorEmail, asignarRolCancha, actualizarCedulaAdmin,
 } from '../firebase/firestore';
 import { CANCHAS as CANCHAS_STATIC } from '../data/canchas';
 import { useAuth } from '../context/AuthContext';
+import { validarCedula, formatearCedula } from '../utils/cedula';
 
 const CANCHA_VACIA = {
  nombre: '', barrio: '', ciudad: 'Montevideo', deporte: 'futbol',
@@ -565,6 +566,9 @@ function SeccionUsuarios({ usuarios, cargando, busqueda, setBusqueda, onRecargar
  const [ejecutando, setEjecutando] = useState(false);
  const [vincularUid, setVincularUid] = useState(null); // uid del usuario al que asignar cancha
  const [canchaSeleccionada, setCanchaSeleccionada] = useState('');
+ const [editarCedulaUid, setEditarCedulaUid] = useState(null); // { uid, cedulaActual, nombre }
+ const [nuevaCedula, setNuevaCedula] = useState('');
+ const nuevaCedulaValida = validarCedula(nuevaCedula);
 
  const mostrarToast = (msg) => {
  setToastMsg(msg);
@@ -618,6 +622,21 @@ function SeccionUsuarios({ usuarios, cargando, busqueda, setBusqueda, onRecargar
  onRecargar();
  } catch {
  mostrarToast('Error al vincular la cancha');
+ }
+ setEjecutando(false);
+ };
+
+ const handleGuardarCedula = async () => {
+ if (!editarCedulaUid || !nuevaCedulaValida) return;
+ setEjecutando(true);
+ try {
+ await actualizarCedulaAdmin(editarCedulaUid.uid, editarCedulaUid.cedulaActual || null, nuevaCedula);
+ mostrarToast('Cédula actualizada correctamente');
+ setEditarCedulaUid(null);
+ setNuevaCedula('');
+ onRecargar();
+ } catch (err) {
+ mostrarToast(err.message || 'Error al actualizar la cédula');
  }
  setEjecutando(false);
  };
@@ -706,6 +725,50 @@ function SeccionUsuarios({ usuarios, cargando, busqueda, setBusqueda, onRecargar
  </div>
  )}
 
+ {/* Modal: editar cédula (solo admin) */}
+ {editarCedulaUid && (
+ <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+ style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }}>
+ <div className="bg-f-card border border-f-border rounded-2xl p-6 w-full max-w-sm animate-fade-in">
+ <h3 className="text-white font-black text-lg uppercase mb-1">Editar cédula</h3>
+ <p className="text-f-muted text-sm mb-1">
+ Usuario: <span className="text-white">{editarCedulaUid.nombre}</span>
+ </p>
+ {editarCedulaUid.cedulaActual && (
+ <p className="text-f-muted text-xs mb-4">
+ Cédula actual: <span className="text-white">{formatearCedula(editarCedulaUid.cedulaActual)}</span>
+ </p>
+ )}
+ <input
+ type="text"
+ inputMode="numeric"
+ value={nuevaCedula}
+ onChange={e => setNuevaCedula(e.target.value.replace(/\D/g, '').slice(0, 8))}
+ placeholder="Nueva cédula (sin puntos ni guión)"
+ autoFocus
+ className="w-full bg-f-bg border border-f-border rounded-xl px-4 py-2.5
+ text-white text-sm outline-none focus:border-f-accent mb-1" />
+ {nuevaCedula && nuevaCedula.length >= 7 && !nuevaCedulaValida && (
+ <p className="text-red-400 text-xs mb-3 px-1">La cédula ingresada no es válida.</p>
+ )}
+ {nuevaCedulaValida && (
+ <p className="text-green-400 text-xs mb-3 px-1 font-bold">{formatearCedula(nuevaCedula)}</p>
+ )}
+ <div className="flex gap-3 mt-2">
+ <button onClick={() => { setEditarCedulaUid(null); setNuevaCedula(''); }}
+ className="flex-1 py-3 rounded-xl border border-f-border text-f-muted font-bold text-sm uppercase">
+ Cancelar
+ </button>
+ <button onClick={handleGuardarCedula} disabled={!nuevaCedulaValida || ejecutando}
+ className="flex-1 py-3 rounded-xl font-black text-sm uppercase text-white transition-all active:scale-95 disabled:opacity-40"
+ style={{ background: '#0ea5e9' }}>
+ {ejecutando ? '...' : 'Guardar'}
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
  <div className="relative mb-4 max-w-md">
  <input type="text" placeholder="Buscar usuario..."
  value={busqueda} onChange={e => setBusqueda(e.target.value)}
@@ -753,9 +816,17 @@ SUSPENDIDO · {diasRestantes}d
  </div>
  <p className="text-f-muted text-xs truncate">{u.email}</p>
  {u.telefono && <p className="text-f-muted text-xs">+598 {u.telefono.replace(/^0/, '')}</p>}
+ {u.cedula
+ ? <p className="text-f-muted text-xs">CI {formatearCedula(u.cedula)}</p>
+ : <p className="text-orange-400 text-xs font-bold">Sin cédula</p>
+ }
  <p className="text-f-muted text-xs">Partidos: {u.partidosJugados} · No-shows: {u.noShows || 0}</p>
  </div>
  <div className="flex flex-col gap-1.5 flex-shrink-0">
+ <button onClick={() => { setEditarCedulaUid({ uid: u.id, cedulaActual: u.cedula || null, nombre: u.nombre }); setNuevaCedula(''); }}
+ className="text-xs font-bold px-3 py-1.5 rounded-lg bg-sky-950 border border-sky-800 text-sky-400 active:scale-95">
+ Editar CI
+ </button>
  {u.rol === 'cancha' && (
  <button onClick={() => { setVincularUid(u.id); setCanchaSeleccionada(u.canchaId || ''); }}
  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-sky-950 border border-sky-800 text-sky-400 active:scale-95">

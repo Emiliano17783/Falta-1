@@ -9,6 +9,7 @@ import {
  cancelarPartidoAutomatico,
 } from './firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
+import CompletarCedulaScreen from './screens/CompletarCedulaScreen';
 import HomeScreen from './screens/HomeScreen';
 import CanchasScreen from './screens/CanchasScreen';
 import CrearScreen from './screens/CrearScreen';
@@ -181,6 +182,9 @@ export default function App() {
  if (!user) return <LoginScreen />;
 
  if (esCancha) return <CanchaPanel />;
+
+ // Usuarios sin cédula deben completarla antes de acceder a la app
+ if (perfil && !perfil.cedula) return <CompletarCedulaScreen />;
 
  const estaBloqueado = perfil?.bloqueado;
  const estaSuspendido = !perfil?.bloqueado && perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date();

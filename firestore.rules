@@ -19,7 +19,13 @@ service cloud.firestore {
          !request.resource.data.diff(resource.data).affectedKeys()
            .hasAny(['admin', 'rol', 'bloqueado', 'advertencia', 'reputacion',
                     'noShows', 'partidosJugados', 'deudaPendiente',
-                    'deudaPartidoId', 'penalizacionHasta']))
+                    'deudaPartidoId', 'penalizacionHasta']) &&
+         // La cédula solo se puede establecer una vez (cuando no está registrada aún)
+         (
+           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['cedula']) ||
+           resource.data.get('cedula', null) == null
+         )
+        )
       );
     }
 
@@ -90,6 +96,20 @@ service cloud.firestore {
     match /pagos/{pagoId} {
       allow read: if request.auth != null && request.auth.uid == resource.data.uid;
       allow write: if false;
+    }
+
+    // ── Cédulas de identidad ───────────────────────────────────────────────────
+    // Colección privada: solo se usa para garantizar unicidad de cédula por cuenta.
+    // El uid de cada documento es el número de cédula normalizado (8 dígitos).
+    match /cedulas/{cedula} {
+      // Cualquier usuario autenticado puede verificar si una cédula ya existe (sin ver el uid)
+      allow get: if request.auth != null;
+      // No se puede listar la colección completa
+      allow list: if false;
+      // El propio usuario puede crear su reserva de cédula (vía transacción)
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      // Solo el admin puede modificar o eliminar cédulas registradas
+      allow update, delete: if esAdmin();
     }
   }
 }
