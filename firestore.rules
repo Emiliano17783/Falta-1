@@ -2,34 +2,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function esAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.admin == true;
+    }
+
     // ── Usuarios ──────────────────────────────────────────────────────────────
     match /usuarios/{uid} {
-      allow read: if request.auth != null;
+      // Solo el propio usuario y los admins pueden leer el perfil completo
+      allow read: if request.auth != null && (request.auth.uid == uid || esAdmin());
       allow create: if request.auth != null && request.auth.uid == uid;
-      // El propio usuario puede editar su perfil, pero no puede cambiarse admin a sí mismo
-      allow update: if request.auth != null && request.auth.uid == uid
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['admin', 'bloqueado', 'noShows', 'penalizacionHasta']);
+      allow update: if request.auth != null && (
+        esAdmin() ||
+        (request.auth.uid == uid &&
+         !request.resource.data.diff(resource.data).affectedKeys()
+           .hasAny(['admin', 'rol', 'bloqueado', 'advertencia', 'reputacion',
+                    'noShows', 'partidosJugados', 'deudaPendiente',
+                    'deudaPartidoId', 'penalizacionHasta']))
+      );
+    }
+
+    // ── Usuarios públicos (solo lectura, escritura desde Cloud Function) ──────
+    match /usuarios_publicos/{uid} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Códigos de verificación (solo Cloud Functions) ────────────────────────
+    match /codigosVerificacion/{docId} {
+      allow read, write: if false;
     }
 
     // ── Partidos ──────────────────────────────────────────────────────────────
     match /partidos/{partidoId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
-      // El creador puede modificar todo; cualquier usuario puede anotarse/salirse;
-      // la cancha puede confirmar/rechazar/registrar pago
       allow update: if request.auth != null && (
+        esAdmin() ||
         request.auth.uid == resource.data.creadoPor ||
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['jugadores', 'jugadoresAnotados', 'activo', 'estado',
                     'confirmadoEn', 'rechazadoEn', 'motivoRechazo',
-                    'pagoCanchaConfirmado', 'pagoCanchaFecha',
-                    'pagos'])
+                    'pagoCanchaConfirmado', 'pagoCanchaFecha', 'pagos',
+                    'notificacionIncompletoEn', 'confirmadoIncompleto',
+                    'canceladoAutomaticoEn', 'modoBuscoRival',
+                    'rivalAceptadoPor', 'rivalAceptadoEn'])
       );
-      allow delete: if request.auth != null && request.auth.uid == resource.data.creadoPor;
+      allow delete: if request.auth != null && (
+        esAdmin() || request.auth.uid == resource.data.creadoPor
+      );
 
-      // ── Mensajes del partido (chat) ────────────────────────────────────────
+      // ── Chat del partido ───────────────────────────────────────────────────
       match /mensajes/{mensajeId} {
-        // Solo pueden leer/escribir los jugadores anotados al partido
         allow read: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/partidos/$(partidoId)).data.jugadores;
         allow create: if request.auth != null
@@ -40,6 +65,18 @@ service cloud.firestore {
           && request.resource.data.texto.size() <= 500;
         allow update, delete: if false;
       }
+    }
+
+    // ── Canchas ───────────────────────────────────────────────────────────────
+    match /canchas/{canchaId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Horarios bloqueados ────────────────────────────────────────────────────
+    match /horarios_bloqueados/{bloqueId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
 
     // ── Reservas ──────────────────────────────────────────────────────────────

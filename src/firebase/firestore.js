@@ -1,480 +1,770 @@
 import {
-  doc, setDoc, getDoc, updateDoc, deleteDoc, collection,
-  query, where, orderBy, onSnapshot, addDoc,
-  serverTimestamp, increment, arrayUnion, arrayRemove, getDocs,
-  limit,
+ doc, setDoc, getDoc, updateDoc, deleteDoc, collection,
+ query, where, orderBy, onSnapshot, addDoc,
+ serverTimestamp, increment, arrayUnion, arrayRemove, getDocs,
+ limit,
 } from 'firebase/firestore';
 import { db } from './config';
 
-// ─── CANCHAS ─────────────────────────────────────────────────────────────────
+// CANCHAS 
 
 export function suscribirCanchas(callback) {
-  const q = query(collection(db, 'canchas'), orderBy('nombre'));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(collection(db, 'canchas'), orderBy('nombre'));
+ return onSnapshot(q, (snap) => {
+ callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ });
 }
 
 export async function crearCancha(datos) {
-  const ref = await addDoc(collection(db, 'canchas'), {
-    ...datos,
-    creadoEn: serverTimestamp(),
-  });
-  return ref.id;
+ const ref = await addDoc(collection(db, 'canchas'), {
+ ...datos,
+ creadoEn: serverTimestamp(),
+ });
+ return ref.id;
 }
 
 export async function actualizarCancha(id, datos) {
-  await updateDoc(doc(db, 'canchas', id), datos);
+ await updateDoc(doc(db, 'canchas', id), datos);
 }
 
 export async function eliminarCancha(id) {
-  await deleteDoc(doc(db, 'canchas', id));
+ await deleteDoc(doc(db, 'canchas', id));
 }
 
 // Carga inicial de las canchas (solo si la colección está vacía)
 export async function seedCanchas(canchas) {
-  const snap = await getDocs(collection(db, 'canchas'));
-  if (!snap.empty) return 'ya_existe';
-  for (const c of canchas) {
-    const { id: _id, ...datos } = c;
-    await addDoc(collection(db, 'canchas'), datos);
-  }
-  return 'ok';
+ const snap = await getDocs(collection(db, 'canchas'));
+ if (!snap.empty) return 'ya_existe';
+ for (const c of canchas) {
+ const { id: _id, ...datos } = c;
+ await addDoc(collection(db, 'canchas'), datos);
+ }
+ return 'ok';
 }
 
-// ─── USUARIOS ───────────────────────────────────────────────────────────────
+// USUARIOS 
 
-export async function crearOActualizarUsuario(user) {
-  const ref = doc(db, 'usuarios', user.uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      uid: user.uid,
-      nombre: user.displayName || 'Jugador',
-      email: user.email,
-      foto: user.photoURL || null,
-      posicion: 'Por definir',
-      ciudad: 'Montevideo',
-      partidosJugados: 0,
-      reputacion: 5,
-      noShows: 0,
-      advertencia: false,
-      insignias: [],
-      penalizacionHasta: null,
-      bloqueado: false,
-      deudaPendiente: false,
-      deudaPartidoId: null,
-      admin: false,
-      rol: 'jugador',  // jugador | cancha | admin
-      creadoEn: serverTimestamp(),
-    });
-  }
-  return ref;
+export async function crearOActualizarUsuario(user, extras = {}) {
+ const ref = doc(db, 'usuarios', user.uid);
+ const snap = await getDoc(ref);
+ if (!snap.exists()) {
+ const nombre = user.displayName || 'Jugador';
+ const foto = user.photoURL || null;
+ await setDoc(ref, {
+ uid: user.uid,
+ nombre,
+ email: user.email,
+ foto,
+ telefono: extras.telefono || null,
+ telefonoVerificado: extras.telefonoVerificado || false,
+ posicion: 'Por definir',
+ nivelFutbol: 'Intermedio',
+ ciudad: 'Montevideo',
+ partidosJugados: 0,
+ reputacion: 5,
+ noShows: 0,
+ advertencia: false,
+ insignias: [],
+ penalizacionHasta: null,
+ bloqueado: false,
+ deudaPendiente: false,
+ deudaPartidoId: null,
+ admin: false,
+ rol: 'jugador', // jugador | cancha | admin
+ creadoEn: serverTimestamp(),
+ });
+ // Escribir perfil público para que otros usuarios puedan verlo
+ await setDoc(doc(db, 'usuarios_publicos', user.uid), {
+ uid: user.uid,
+ nombre,
+ foto,
+ nivelFutbol: 'Intermedio',
+ reputacion: 5,
+ });
+ }
+ return ref;
 }
 
 export async function obtenerUsuario(uid) {
-  const snap = await getDoc(doc(db, 'usuarios', uid));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+ const snap = await getDoc(doc(db, 'usuarios', uid));
+ return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export function suscribirUsuario(uid, callback) {
+ return onSnapshot(doc(db, 'usuarios', uid), (snap) => {
+ if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+ else callback(null);
+ });
 }
 
 export async function actualizarPerfil(uid, datos) {
-  await updateDoc(doc(db, 'usuarios', uid), datos);
+ await updateDoc(doc(db, 'usuarios', uid), datos);
 }
 
 // Admin: obtener todos los usuarios
 export async function obtenerTodosUsuarios() {
-  const snap = await getDocs(collection(db, 'usuarios'));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+ const snap = await getDocs(collection(db, 'usuarios'));
+ return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 export async function banearUsuario(uid, permanente = false) {
-  const updates = permanente
-    ? { bloqueado: true }
-    : { penalizacionHasta: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
-  await updateDoc(doc(db, 'usuarios', uid), updates);
+ const updates = permanente
+ ? { bloqueado: true }
+ : { penalizacionHasta: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() };
+ await updateDoc(doc(db, 'usuarios', uid), updates);
 }
 
 export async function levantarBan(uid) {
-  await updateDoc(doc(db, 'usuarios', uid), {
-    bloqueado: false,
-    penalizacionHasta: null,
-    advertencia: false,
-    noShows: 0,
-  });
+ await updateDoc(doc(db, 'usuarios', uid), {
+ bloqueado: false,
+ penalizacionHasta: null,
+ advertencia: false,
+ noShows: 0,
+ });
 }
 
-// ─── PARTIDOS ────────────────────────────────────────────────────────────────
+// PARTIDOS 
 
 export function suscribirPartidos(callback, filtros = {}) {
-  const q = query(collection(db, 'partidos'), orderBy('fechaHora'));
-  return onSnapshot(q, (snap) => {
-    let partidos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      .filter(p => p.activo === true && p.estado === 'confirmado');
-    if (filtros.deporte) partidos = partidos.filter(p => p.deporte === filtros.deporte);
-    if (filtros.modalidad) partidos = partidos.filter(p => p.modalidad === filtros.modalidad);
-    if (filtros.barrio) partidos = partidos.filter(p => p.barrio === filtros.barrio);
-    callback(partidos);
-  });
+ const q = query(collection(db, 'partidos'), orderBy('fechaHora'));
+ return onSnapshot(q, (snap) => {
+ let partidos = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+ .filter(p => p.activo === true && p.estado === 'confirmado');
+ if (filtros.deporte) partidos = partidos.filter(p => p.deporte === filtros.deporte);
+ if (filtros.modalidad) partidos = partidos.filter(p => p.modalidad === filtros.modalidad);
+ if (filtros.barrio) partidos = partidos.filter(p => p.barrio === filtros.barrio);
+ callback(partidos);
+ });
 }
 
 // Admin: todos los partidos
 export function suscribirTodosPartidos(callback) {
-  const q = query(collection(db, 'partidos'), orderBy('fechaHora', 'desc'));
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(collection(db, 'partidos'), orderBy('fechaHora', 'desc'));
+ return onSnapshot(q, (snap) => {
+ callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ });
 }
 
 // Partidos pendientes para una cancha (por canchaId)
+// Orden: client-side para no requerir índice compuesto en Firestore
 export function suscribirPartidosPendientesCancha(canchaId, callback) {
-  const q = query(
-    collection(db, 'partidos'),
-    where('canchaId', '==', canchaId),
-    where('estado', '==', 'pendiente'),
-    orderBy('creadoEn', 'desc'),
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(
+ collection(db, 'partidos'),
+ where('canchaId', '==', canchaId),
+ where('estado', '==', 'pendiente'),
+ );
+ return onSnapshot(q, (snap) => {
+ const partidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+ partidos.sort((a, b) => {
+ const ta = a.creadoEn?.toDate?.() ?? new Date(0);
+ const tb = b.creadoEn?.toDate?.() ?? new Date(0);
+ return tb - ta; // desc
+ });
+ callback(partidos);
+ }, (err) => {
+ console.error('[suscribirPartidosPendientesCancha] Error:', err);
+ callback([]);
+ });
 }
 
-// Todos los partidos confirmados de una cancha
+// Todos los partidos de una cancha
+// Orden: client-side para no requerir índice compuesto en Firestore
 export function suscribirPartidosCancha(canchaId, callback) {
-  const q = query(
-    collection(db, 'partidos'),
-    where('canchaId', '==', canchaId),
-    orderBy('fechaHora', 'asc'),
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(
+ collection(db, 'partidos'),
+ where('canchaId', '==', canchaId),
+ );
+ return onSnapshot(q, (snap) => {
+ const partidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+ partidos.sort((a, b) => new Date(a.fechaHora || 0) - new Date(b.fechaHora || 0)); // asc
+ callback(partidos);
+ }, (err) => {
+ console.error('[suscribirPartidosCancha] Error:', err);
+ callback([]);
+ });
 }
 
 // Devuelve array de horas ocupadas ("20:00", "21:00", etc.) para una cancha en una fecha dada
+// Incluye partidos activos Y horarios bloqueados manualmente por la cancha
 export async function getHorariosOcupados(canchaId, fecha) {
-  const q = query(
-    collection(db, 'partidos'),
-    where('canchaId', '==', canchaId),
-    where('activo', '==', true),
-  );
-  const snap = await getDocs(q);
-  const startOfDay = new Date(fecha); startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay   = new Date(fecha); endOfDay.setHours(23, 59, 59, 999);
-  const ocupados = [];
-  snap.forEach(d => {
-    const p = d.data();
-    const f = new Date(p.fechaHora);
-    if (f >= startOfDay && f <= endOfDay) {
-      ocupados.push(`${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`);
-    }
-  });
-  return ocupados;
+ const startOfDay = new Date(fecha); startOfDay.setHours(0, 0, 0, 0);
+ const endOfDay = new Date(fecha); endOfDay.setHours(23, 59, 59, 999);
+ const fechaStr = startOfDay.toISOString().split('T')[0];
+
+ const ocupados = [];
+
+ // Partidos activos — se ejecuta independientemente para no bloquear los horarios bloqueados
+ try {
+   const qPartidos = query(
+     collection(db, 'partidos'),
+     where('canchaId', '==', canchaId),
+     where('activo', '==', true),
+   );
+   const snapPartidos = await getDocs(qPartidos);
+   snapPartidos.forEach(d => {
+     const p = d.data();
+     const f = new Date(p.fechaHora);
+     if (f >= startOfDay && f <= endOfDay) {
+       ocupados.push(`${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`);
+     }
+   });
+ } catch (err) {
+   console.error('[getHorariosOcupados] Error en partidos:', err);
+ }
+
+ // Horarios bloqueados manualmente — se ejecuta independientemente
+ try {
+   const qBloqueados = query(
+     collection(db, 'horarios_bloqueados'),
+     where('canchaId', '==', canchaId),
+     where('fecha', '==', fechaStr),
+   );
+   const snapBloqueados = await getDocs(qBloqueados);
+   snapBloqueados.forEach(d => {
+     const b = d.data();
+     if (!ocupados.includes(b.hora)) ocupados.push(b.hora);
+   });
+ } catch (err) {
+   console.error('[getHorariosOcupados] Error en horarios bloqueados:', err);
+ }
+
+ return ocupados;
+}
+
+// Suscripción en tiempo real a los horarios ocupados de una cancha en una fecha
+// Combina partidos activos + horarios bloqueados; llama callback cada vez que algo cambia
+export function suscribirHorariosOcupados(canchaId, fecha, callback) {
+ const startOfDay = new Date(fecha); startOfDay.setHours(0, 0, 0, 0);
+ const endOfDay = new Date(fecha); endOfDay.setHours(23, 59, 59, 999);
+ const fechaStr = startOfDay.toISOString().split('T')[0];
+
+ let horasPartidos = [];
+ let horasBloqueadas = [];
+
+ const notificar = () => {
+ const combinados = [...new Set([...horasPartidos, ...horasBloqueadas])];
+ callback(combinados);
+ };
+
+ // Listener 1: partidos activos de esta cancha
+ const qPartidos = query(
+ collection(db, 'partidos'),
+ where('canchaId', '==', canchaId),
+ where('activo', '==', true),
+ );
+ const unsubPartidos = onSnapshot(qPartidos, (snap) => {
+ horasPartidos = [];
+ snap.forEach(d => {
+ const p = d.data();
+ const f = new Date(p.fechaHora);
+ if (f >= startOfDay && f <= endOfDay) {
+ horasPartidos.push(`${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`);
+ }
+ });
+ notificar();
+ }, (err) => {
+ console.error('[suscribirHorariosOcupados] Error en partidos:', err);
+ });
+
+ // Listener 2: horarios bloqueados manualmente para esta cancha+fecha
+ const qBloqueados = query(
+ collection(db, 'horarios_bloqueados'),
+ where('canchaId', '==', canchaId),
+ where('fecha', '==', fechaStr),
+ );
+ const unsubBloqueados = onSnapshot(qBloqueados, (snap) => {
+ horasBloqueadas = [];
+ snap.forEach(d => horasBloqueadas.push(d.data().hora));
+ notificar();
+ }, (err) => {
+ console.error('[suscribirHorariosOcupados] Error en bloqueados:', err);
+ });
+
+ return () => { unsubPartidos(); unsubBloqueados(); };
 }
 
 // Crear partido — queda en estado "pendiente" hasta que la cancha confirme
 export async function crearPartido(datos, uid) {
-  const ref = await addDoc(collection(db, 'partidos'), {
-    ...datos,
-    creadoPor: uid,
-    jugadoresAnotados: 1,
-    jugadores: [uid],
-    activo: false,             // No visible en feed hasta que la cancha confirme
-    estado: 'pendiente',       // pendiente | confirmado | en_curso | finalizado | cancelado
-    pagos: {},                 // { uid: { marcadoPorOrganizador: true/false } }
-    pagoCanchaConfirmado: false,
-    creadoEn: serverTimestamp(),
-  });
-  return ref.id;
+ // Verificar estado del usuario antes de crear
+ const userSnap = await getDoc(doc(db, 'usuarios', uid));
+ if (userSnap.exists()) {
+ const u = userSnap.data();
+ if (u.bloqueado) {
+ throw new Error('Tu cuenta está bloqueada permanentemente');
+ }
+ if (u.penalizacionHasta && new Date(u.penalizacionHasta) > new Date()) {
+ const dias = Math.ceil((new Date(u.penalizacionHasta) - new Date()) / 86400000);
+ throw new Error(`Tu cuenta está suspendida. Te quedan ${dias} día${dias !== 1 ? 's' : ''}`);
+ }
+ }
+ const ref = await addDoc(collection(db, 'partidos'), {
+ ...datos,
+ creadoPor: uid,
+ jugadoresAnotados: 1,
+ jugadores: [uid],
+ activo: false, // No visible en feed hasta que la cancha confirme
+ estado: 'pendiente', // pendiente | confirmado | en_curso | finalizado | cancelado
+ pagos: {}, // { uid: { marcadoPorOrganizador: true/false } }
+ pagoCanchaConfirmado: false,
+ creadoEn: serverTimestamp(),
+ });
+ return ref.id;
 }
 
 // Cancha confirma la reserva → el partido se publica
 export async function confirmarReserva(partidoId) {
-  await updateDoc(doc(db, 'partidos', partidoId), {
-    activo: true,
-    estado: 'confirmado',
-    confirmadoEn: serverTimestamp(),
-  });
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ activo: true,
+ estado: 'confirmado',
+ confirmadoEn: serverTimestamp(),
+ });
 }
 
 // Cancha rechaza la reserva
 export async function rechazarReserva(partidoId, motivo = '') {
-  await updateDoc(doc(db, 'partidos', partidoId), {
-    activo: false,
-    estado: 'cancelado',
-    motivoRechazo: motivo,
-    rechazadoEn: serverTimestamp(),
-  });
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ activo: false,
+ estado: 'cancelado',
+ motivoRechazo: motivo,
+ rechazadoEn: serverTimestamp(),
+ });
 }
 
 // Cancha confirma que recibió el pago en efectivo (solo cancha puede hacer esto)
 export async function confirmarPagoCancha(partidoId) {
-  await updateDoc(doc(db, 'partidos', partidoId), {
-    pagoCanchaConfirmado: true,
-    pagoCanchaFecha: serverTimestamp(),
-    estado: 'finalizado',
-  });
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ pagoCanchaConfirmado: true,
+ pagoCanchaFecha: serverTimestamp(),
+ estado: 'finalizado',
+ });
 }
 
 // Organizador marca que un jugador le pagó (siempre queda como "no verificado")
 export async function registrarPagoJugador(partidoId, jugadorUid, marcado) {
-  await updateDoc(doc(db, 'partidos', partidoId), {
-    [`pagos.${jugadorUid}.marcadoPorOrganizador`]: marcado,
-  });
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ [`pagos.${jugadorUid}.marcadoPorOrganizador`]: marcado,
+ });
 }
 
 // Obtener un partido por ID
 export async function obtenerPartido(partidoId) {
-  const snap = await getDoc(doc(db, 'partidos', partidoId));
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+ const snap = await getDoc(doc(db, 'partidos', partidoId));
+ return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
 // Suscribirse a un partido específico (para detalle en tiempo real)
 export function suscribirPartido(partidoId, callback) {
-  return onSnapshot(doc(db, 'partidos', partidoId), (snap) => {
-    if (snap.exists()) callback({ id: snap.id, ...snap.data() });
-    else callback(null);
-  });
+ return onSnapshot(doc(db, 'partidos', partidoId), (snap) => {
+ if (snap.exists()) callback({ id: snap.id, ...snap.data() });
+ else callback(null);
+ });
 }
 
 export async function anotarseAPartido(partidoId, uid) {
-  const ref = doc(db, 'partidos', partidoId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Partido no encontrado');
+ const ref = doc(db, 'partidos', partidoId);
+ const snap = await getDoc(ref);
+ if (!snap.exists()) throw new Error('Partido no encontrado');
 
-  const partido = snap.data();
+ const partido = snap.data();
 
-  if ((partido.jugadores || []).includes(uid)) {
-    throw new Error('Ya estás anotado en este partido');
-  }
+ if ((partido.jugadores || []).includes(uid)) {
+ throw new Error('Ya estás anotado en este partido');
+ }
 
-  if (partido.jugadoresAnotados >= partido.cupoTotal) {
-    throw new Error('El partido está lleno');
-  }
+ if (partido.jugadoresAnotados >= partido.cupoTotal) {
+ throw new Error('El partido está lleno');
+ }
 
-  // Verificar deuda pendiente
-  const userSnap = await getDoc(doc(db, 'usuarios', uid));
-  if (userSnap.exists() && userSnap.data().deudaPendiente) {
-    throw new Error('Tenés una deuda pendiente de un partido anterior');
-  }
+ // Verificar estado del usuario (ban/suspensión/deuda)
+ const userSnap = await getDoc(doc(db, 'usuarios', uid));
+ if (userSnap.exists()) {
+ const u = userSnap.data();
+ if (u.bloqueado) {
+ throw new Error('Tu cuenta está bloqueada permanentemente');
+ }
+ if (u.penalizacionHasta && new Date(u.penalizacionHasta) > new Date()) {
+ const dias = Math.ceil((new Date(u.penalizacionHasta) - new Date()) / 86400000);
+ throw new Error(`Tu cuenta está suspendida. Te quedan ${dias} día${dias !== 1 ? 's' : ''}`);
+ }
+ if (u.deudaPendiente) {
+ throw new Error('Tenés una deuda pendiente de un partido anterior');
+ }
+ }
 
-  const nuevosAnotados = (partido.jugadoresAnotados || 0) + 1;
-  const lleno = nuevosAnotados >= partido.cupoTotal;
+ const nuevosAnotados = (partido.jugadoresAnotados || 0) + 1;
+ const lleno = nuevosAnotados >= partido.cupoTotal;
 
-  await updateDoc(ref, {
-    jugadores: arrayUnion(uid),
-    jugadoresAnotados: increment(1),
-    ...(lleno ? { activo: false, estado: 'lleno' } : {}),
-  });
+ await updateDoc(ref, {
+ jugadores: arrayUnion(uid),
+ jugadoresAnotados: increment(1),
+ ...(lleno ? { activo: false, estado: 'lleno' } : {}),
+ });
 }
 
-// Desanotarse — umbral de 3 horas según las reglas de la plataforma
+// Desanotarse — umbral de 1 hora y 30 minutos según las reglas de la plataforma
 export async function desanotarseDePartido(partidoId, uid) {
-  const ref = doc(db, 'partidos', partidoId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Partido no encontrado');
+ const ref = doc(db, 'partidos', partidoId);
+ const snap = await getDoc(ref);
+ if (!snap.exists()) throw new Error('Partido no encontrado');
 
-  const partido = snap.data();
-  const fechaPartido = new Date(partido.fechaHora);
-  const ahora = new Date();
-  const diffMs = fechaPartido - ahora;
-  const tresHorasMs = 3 * 60 * 60 * 1000;
-  const esMenosDeTresHoras = diffMs > 0 && diffMs < tresHorasMs;
-  const yaPaso = diffMs <= 0;
+ const partido = snap.data();
+ const fechaPartido = new Date(partido.fechaHora);
+ const ahora = new Date();
+ const diffMs = fechaPartido - ahora;
+ const limiteMs = 90 * 60 * 1000; // 1 hora y 30 minutos
+ const esMenosDelLimite = diffMs > 0 && diffMs < limiteMs;
+ const yaPaso = diffMs <= 0;
 
-  await updateDoc(ref, {
-    jugadores: arrayRemove(uid),
-    jugadoresAnotados: increment(-1),
-    ...(partido.estado === 'lleno' ? { activo: true, estado: 'confirmado' } : {}),
-  });
+ await updateDoc(ref, {
+ jugadores: arrayRemove(uid),
+ jugadoresAnotados: increment(-1),
+ ...(partido.estado === 'lleno' ? { activo: true, estado: 'confirmado' } : {}),
+ });
 
-  // Solo penalizar si cancela con menos de 3 horas o ya pasó (no-show)
-  if (esMenosDeTresHoras || yaPaso) {
-    await aplicarPenalizacion(uid, yaPaso);
-  }
+ // Solo penalizar si cancela con menos de 1h30m o ya pasó (no-show)
+ if (esMenosDelLimite || yaPaso) {
+ await aplicarPenalizacion(uid, yaPaso);
+ }
 }
 
 async function aplicarPenalizacion(uid, esNoShow = false) {
-  const userRef = doc(db, 'usuarios', uid);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) return;
+ const userRef = doc(db, 'usuarios', uid);
+ const userSnap = await getDoc(userRef);
+ if (!userSnap.exists()) return;
 
-  const userData = userSnap.data();
-  const updates = {};
+ const userData = userSnap.data();
+ const updates = {};
 
-  if (esNoShow) {
-    const noShows = (userData.noShows || 0) + 1;
-    updates.noShows = noShows;
+ if (esNoShow) {
+ const noShows = (userData.noShows || 0) + 1;
+ updates.noShows = noShows;
 
-    if (noShows >= 3) {
-      // 3+ no-shows: bloqueo permanente
-      updates.bloqueado = true;
-    } else if (noShows >= 2) {
-      // 2 no-shows: suspensión 1 mes
-      const hasta = new Date();
-      hasta.setMonth(hasta.getMonth() + 1);
-      updates.penalizacionHasta = hasta.toISOString();
-    } else {
-      // 1 no-show: suspensión 7 días
-      const hasta = new Date();
-      hasta.setDate(hasta.getDate() + 7);
-      updates.penalizacionHasta = hasta.toISOString();
-    }
-  } else {
-    // Cancelación con menos de 3 horas → primer aviso
-    updates.advertencia = true;
-  }
+ if (noShows >= 3) {
+ // 3+ no-shows: bloqueo permanente
+ updates.bloqueado = true;
+ } else if (noShows >= 2) {
+ // 2 no-shows: suspensión 1 mes
+ const hasta = new Date();
+ hasta.setMonth(hasta.getMonth() + 1);
+ updates.penalizacionHasta = hasta.toISOString();
+ } else {
+ // 1 no-show: suspensión 7 días
+ const hasta = new Date();
+ hasta.setDate(hasta.getDate() + 7);
+ updates.penalizacionHasta = hasta.toISOString();
+ }
+ } else {
+ // Cancelación con menos de 1h30m → primer aviso
+ updates.advertencia = true;
+ }
 
-  await updateDoc(userRef, updates);
+ await updateDoc(userRef, updates);
 }
 
-// ─── POST-PARTIDO ─────────────────────────────────────────────────────────────
+// POST-PARTIDO 
 
 // Organizador confirma quiénes asistieron y quiénes pagaron
 export async function confirmarAsistenciaPartido(partidoId, noAsistentesUids = [], noPagadoresUids = []) {
-  await updateDoc(doc(db, 'partidos', partidoId), {
-    asistenciaConfirmada: true,
-    noAsistentes: noAsistentesUids,
-    deudores: noPagadoresUids,
-    estado: 'finalizado',
-    asistenciaConfirmadaEn: serverTimestamp(),
-  });
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ asistenciaConfirmada: true,
+ noAsistentes: noAsistentesUids,
+ deudores: noPagadoresUids,
+ estado: 'finalizado',
+ asistenciaConfirmadaEn: serverTimestamp(),
+ });
 
-  // Aplicar penalización de no-show a quienes no asistieron
-  for (const uid of noAsistentesUids) {
-    await aplicarPenalizacion(uid, true);
-  }
+ // Aplicar penalización de no-show a quienes no asistieron
+ for (const uid of noAsistentesUids) {
+ await aplicarPenalizacion(uid, true);
+ }
 
-  // Marcar deuda en perfil de quienes no pagaron
-  for (const uid of noPagadoresUids) {
-    await updateDoc(doc(db, 'usuarios', uid), {
-      deudaPendiente: true,
-      deudaPartidoId: partidoId,
-    });
-  }
+ // Marcar deuda en perfil de quienes no pagaron
+ for (const uid of noPagadoresUids) {
+ await updateDoc(doc(db, 'usuarios', uid), {
+ deudaPendiente: true,
+ deudaPartidoId: partidoId,
+ });
+ }
 }
 
 // Organizador confirma que un jugador le pagó la deuda → levanta la deuda
 export async function levantarDeudaJugador(jugadorUid, partidoId) {
-  await updateDoc(doc(db, 'usuarios', jugadorUid), {
-    deudaPendiente: false,
-    deudaPartidoId: null,
-  });
-  if (partidoId) {
-    await updateDoc(doc(db, 'partidos', partidoId), {
-      deudores: arrayRemove(jugadorUid),
-    });
-  }
+ await updateDoc(doc(db, 'usuarios', jugadorUid), {
+ deudaPendiente: false,
+ deudaPartidoId: null,
+ });
+ if (partidoId) {
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ deudores: arrayRemove(jugadorUid),
+ });
+ }
 }
 
 // Suscribirse a partidos del organizador que necesitan confirmación de asistencia
 export function suscribirPartidosParaConfirmar(uid, callback) {
-  const q = query(
-    collection(db, 'partidos'),
-    where('creadoPor', '==', uid),
-    limit(30),
-  );
-  return onSnapshot(q, (snap) => {
-    const ahora = new Date();
-    const noventaMin = 90 * 60 * 1000;
-    const pendientes = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(p => {
-        if (p.asistenciaConfirmada) return false;
-        if (!['confirmado', 'lleno'].includes(p.estado)) return false;
-        const fecha = new Date(p.fechaHora);
-        return ahora > new Date(fecha.getTime() + noventaMin);
-      });
-    callback(pendientes);
-  });
+ const q = query(
+ collection(db, 'partidos'),
+ where('creadoPor', '==', uid),
+ limit(30),
+ );
+ return onSnapshot(q, (snap) => {
+ const ahora = new Date();
+ const noventaMin = 90 * 60 * 1000;
+ const pendientes = snap.docs
+ .map(d => ({ id: d.id, ...d.data() }))
+ .filter(p => {
+ if (p.asistenciaConfirmada) return false;
+ if (!['confirmado', 'lleno'].includes(p.estado)) return false;
+ const fecha = new Date(p.fechaHora);
+ return ahora > new Date(fecha.getTime() + noventaMin);
+ });
+ callback(pendientes);
+ });
 }
 
 export async function eliminarPartido(partidoId, uid) {
-  const ref = doc(db, 'partidos', partidoId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Partido no encontrado');
-  const partido = snap.data();
-  if (partido.creadoPor !== uid) throw new Error('No tenés permiso para eliminar este partido');
-  await deleteDoc(ref);
+ const ref = doc(db, 'partidos', partidoId);
+ const snap = await getDoc(ref);
+ if (!snap.exists()) throw new Error('Partido no encontrado');
+ const partido = snap.data();
+ if (partido.creadoPor !== uid) throw new Error('No tenés permiso para eliminar este partido');
+ await deleteDoc(ref);
 }
 
 // Admin: eliminar cualquier partido
 export async function eliminarPartidoAdmin(partidoId) {
-  await deleteDoc(doc(db, 'partidos', partidoId));
+ await deleteDoc(doc(db, 'partidos', partidoId));
 }
 
-// ─── CHAT DE PARTIDOS ────────────────────────────────────────────────────────
+// CHAT DE PARTIDOS 
 
 export function suscribirMensajes(partidoId, callback) {
-  const q = query(
-    collection(db, 'partidos', partidoId, 'mensajes'),
-    orderBy('creadoEn', 'asc'),
-    limit(200),
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(
+ collection(db, 'partidos', partidoId, 'mensajes'),
+ orderBy('creadoEn', 'asc'),
+ limit(200),
+ );
+ return onSnapshot(q, (snap) => {
+ callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ });
 }
 
 export async function enviarMensaje(partidoId, uid, nombre, foto, texto) {
-  await addDoc(collection(db, 'partidos', partidoId, 'mensajes'), {
-    uid,
-    nombre,
-    foto: foto || null,
-    texto,
-    creadoEn: serverTimestamp(),
-  });
+ await addDoc(collection(db, 'partidos', partidoId, 'mensajes'), {
+ uid,
+ nombre,
+ foto: foto || null,
+ texto,
+ creadoEn: serverTimestamp(),
+ });
 }
 
 export async function fijarMensaje(partidoId, mensajeId) {
-  await updateDoc(doc(db, 'partidos', partidoId, 'mensajes', mensajeId), {
-    fijado: true,
-  });
+ await updateDoc(doc(db, 'partidos', partidoId, 'mensajes', mensajeId), {
+ fijado: true,
+ });
 }
 
-// ─── CHATS ACTIVOS DEL USUARIO ───────────────────────────────────────────────
+// CHATS ACTIVOS DEL USUARIO
 
-// Partidos donde el usuario está anotado y el partido está confirmado (para la pantalla de chat)
+// Partidos donde el usuario está anotado — sin orderBy para evitar requerir índice compuesto con array-contains
 export function suscribirMisPartidos(uid, callback) {
-  const q = query(
-    collection(db, 'partidos'),
-    where('jugadores', 'array-contains', uid),
-    orderBy('fechaHora', 'desc'),
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(
+ collection(db, 'partidos'),
+ where('jugadores', 'array-contains', uid),
+ );
+ return onSnapshot(q, (snap) => {
+ const partidos = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+ partidos.sort((a, b) => new Date(b.fechaHora || 0) - new Date(a.fechaHora || 0)); // desc
+ callback(partidos);
+ }, (err) => {
+ console.error('[suscribirMisPartidos] Error:', err);
+ callback([]);
+ });
 }
 
-// ─── RESERVAS ────────────────────────────────────────────────────────────────
+// RESERVAS 
 
 export async function crearReserva(datos, uid) {
-  const ref = await addDoc(collection(db, 'reservas'), {
-    ...datos,
-    uid,
-    estado: 'pendiente',
-    creadoEn: serverTimestamp(),
-  });
-  return ref.id;
+ const ref = await addDoc(collection(db, 'reservas'), {
+ ...datos,
+ uid,
+ estado: 'pendiente',
+ creadoEn: serverTimestamp(),
+ });
+ return ref.id;
 }
 
 export async function obtenerReservasCancha(canchaId, fecha) {
-  const q = query(
-    collection(db, 'reservas'),
-    where('canchaId', '==', canchaId),
-    where('fecha', '==', fecha),
-    where('estado', '!=', 'cancelada'),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+ const q = query(
+ collection(db, 'reservas'),
+ where('canchaId', '==', canchaId),
+ where('fecha', '==', fecha),
+ where('estado', '!=', 'cancelada'),
+ );
+ const snap = await getDocs(q);
+ return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export function suscribirMisReservas(uid, callback) {
-  const q = query(
-    collection(db, 'reservas'),
-    where('uid', '==', uid),
-    orderBy('creadoEn', 'desc'),
-  );
-  return onSnapshot(q, (snap) => {
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  });
+ const q = query(
+ collection(db, 'reservas'),
+ where('uid', '==', uid),
+ orderBy('creadoEn', 'desc'),
+ );
+ return onSnapshot(q, (snap) => {
+ callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+ });
+}
+
+// MODO "BUSCO RIVAL" 
+
+// Crear un partido en modo "busco rival" — el organizador ya tiene su equipo completo
+export async function crearPartidoBuscoRival(datos, uid) {
+ const userSnap = await getDoc(doc(db, 'usuarios', uid));
+ if (userSnap.exists()) {
+ const u = userSnap.data();
+ if (u.bloqueado) throw new Error('Tu cuenta está bloqueada permanentemente');
+ if (u.penalizacionHasta && new Date(u.penalizacionHasta) > new Date()) {
+ const dias = Math.ceil((new Date(u.penalizacionHasta) - new Date()) / 86400000);
+ throw new Error(`Tu cuenta está suspendida. Te quedan ${dias} día${dias !== 1 ? 's' : ''}`);
+ }
+ }
+ const ref = await addDoc(collection(db, 'partidos'), {
+ ...datos,
+ creadoPor: uid,
+ modoBuscoRival: true,
+ organizador1: uid,
+ organizador2: null,
+ rival: null,
+ activo: false,
+ estado: 'pendiente',
+ jugadores: [uid],
+ jugadoresAnotados: datos.jugadoresPorEquipo || 5,
+ pagos: {},
+ pagoCanchaConfirmado: false,
+ creadoEn: serverTimestamp(),
+ });
+ return ref.id;
+}
+
+// Aceptar el desafío de un partido "busco rival"
+export async function aceptarDesafioRival(partidoId, organizador2Uid, organizador2Nombre) {
+ const ref = doc(db, 'partidos', partidoId);
+ const snap = await getDoc(ref);
+ if (!snap.exists()) throw new Error('Partido no encontrado');
+ const p = snap.data();
+ if (p.organizador2) throw new Error('El desafío ya fue aceptado por otro equipo');
+
+ await updateDoc(ref, {
+ organizador2: organizador2Uid,
+ rival: organizador2Nombre,
+ jugadores: arrayUnion(organizador2Uid),
+ estado: 'rival_encontrado',
+ rivalAceptadoEn: serverTimestamp(),
+ });
+}
+
+// CANCELACIÓN AUTOMÁTICA POR PARTIDO INCOMPLETO 
+
+// Marca que se notificó al organizador (1h15m antes) — guarda timestamp
+export async function marcarNotificacionIncompleto(partidoId) {
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ notificacionIncompletoEn: new Date().toISOString(),
+ });
+}
+
+// Organizador confirma que juega igual con los que hay
+export async function confirmarPartidoIncompleto(partidoId) {
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ confirmadoIncompleto: true,
+ notificacionIncompletoEn: null,
+ });
+}
+
+// Cancelar partido automáticamente por falta de jugadores
+export async function cancelarPartidoAutomatico(partidoId) {
+ await updateDoc(doc(db, 'partidos', partidoId), {
+ estado: 'cancelado',
+ activo: false,
+ motivoRechazo: 'Cancelado automáticamente — falta de jugadores',
+ canceladoAutomaticoEn: new Date().toISOString(),
+ notificacionIncompletoEn: null,
+ });
+}
+
+// HORARIOS BLOQUEADOS (Cancha bloquea manualmente) 
+
+// Bloquear un horario manualmente (por reserva externa)
+export async function bloquearHorario(canchaId, fecha, hora, motivo = '') {
+ const fechaStr = typeof fecha === 'string' ? fecha : fecha.toISOString().split('T')[0];
+ const ref = await addDoc(collection(db, 'horarios_bloqueados'), {
+ canchaId, fecha: fechaStr, hora, motivo,
+ creadoEn: serverTimestamp(),
+ });
+ return ref.id;
+}
+
+// Desbloquear un horario
+export async function desbloquearHorario(bloqueId) {
+ await deleteDoc(doc(db, 'horarios_bloqueados', bloqueId));
+}
+
+// Obtener horarios bloqueados para una cancha/fecha
+export async function getHorariosBloqueados(canchaId, fecha) {
+ const fechaStr = typeof fecha === 'string' ? fecha : fecha.toISOString().split('T')[0];
+ const q = query(
+ collection(db, 'horarios_bloqueados'),
+ where('canchaId', '==', canchaId),
+ where('fecha', '==', fechaStr),
+ );
+ const snap = await getDocs(q);
+ return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Suscripción en tiempo real a bloqueos de una cancha (todos los días)
+export function suscribirHorariosBloqueados(canchaId, callback) {
+ const q = query(
+ collection(db, 'horarios_bloqueados'),
+ where('canchaId', '==', canchaId),
+ );
+ return onSnapshot(q, (snap) => {
+ callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ });
+}
+
+// FOTOS DE PERFIL (Cloudinary)
+
+// Guarda en Firestore la URL de la foto ya subida a Cloudinary
+export async function actualizarFotoPerfil(uid, url) {
+ await updateDoc(doc(db, 'usuarios', uid), { foto: url });
+}
+
+// Buscar usuario por email (para asignar rol cancha desde AdminScreen)
+export async function obtenerUsuarioPorEmail(email) {
+ const q = query(collection(db, 'usuarios'), where('email', '==', email), limit(1));
+ const snap = await getDocs(q);
+ if (snap.empty) return null;
+ return { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+// Asignar rol cancha a un usuario existente
+export async function asignarRolCancha(uid, canchaId, nombreCancha) {
+ await updateDoc(doc(db, 'usuarios', uid), {
+ rol: 'cancha',
+ canchaId,
+ nombre: nombreCancha,
+ });
+}
+
+// Cargar perfiles públicos de varios usuarios a la vez (para MatchDetailScreen)
+export async function obtenerPerfilesJugadores(uids) {
+ const perfiles = {};
+ await Promise.all(uids.map(async (uid) => {
+ try {
+ const snap = await getDoc(doc(db, 'usuarios_publicos', uid));
+ if (snap.exists()) perfiles[uid] = { id: snap.id, ...snap.data() };
+ } catch { /* ignorar errores individuales */ }
+ }));
+ return perfiles;
 }

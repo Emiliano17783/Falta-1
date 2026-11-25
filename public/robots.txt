@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /panel-cancha
+
+Sitemap: https://falta-1.com/sitemap.xml

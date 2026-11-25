@@ -2,12 +2,38 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180x180.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#04091a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Falta 1 — Fútbol amateur en Montevideo</title>
+
+    <!-- Título y descripción -->
+    <title>Falta 1 — Fútbol y Pádel Amateur en Montevideo y Flores</title>
+    <meta name="description" content="La app para organizar partidos de fútbol 5, fútbol 7 y pádel amateur en Montevideo y Flores, Uruguay. Unite a un equipo o creá tu partido en segundos." />
+
+    <!-- Open Graph / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://falta-1.com/" />
+    <meta property="og:title" content="Falta 1 — Fútbol y Pádel Amateur en Montevideo y Flores" />
+    <meta property="og:description" content="La app para organizar partidos de fútbol 5, fútbol 7 y pádel amateur en Montevideo y Flores, Uruguay. Unite a un equipo o creá tu partido en segundos." />
+    <meta property="og:image" content="https://falta-1.com/hero-poster.jpg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta property="og:locale" content="es_UY" />
+    <meta property="og:site_name" content="Falta 1" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Falta 1 — Fútbol y Pádel Amateur en Montevideo y Flores" />
+    <meta name="twitter:description" content="La app para organizar partidos de fútbol 5, fútbol 7 y pádel amateur en Montevideo y Flores, Uruguay." />
+    <meta name="twitter:image" content="https://falta-1.com/hero-poster.jpg" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- TIPOGRAFÍA ANTERIOR (Oswald + Poppins) — descomentar para volver:
@@ -24,8 +50,8 @@
     -->
     <!-- TIPOGRAFÍA ACTUAL: Space Grotesk — comentar esta línea y descomentar la de arriba para volver -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <!-- Preload del video hero para que empiece a cargar antes que React -->
-    <link rel="preload" href="/hero.mp4" as="video" type="video/mp4" />
+    <!-- Cloudinary Upload Widget -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
   </head>
   <body>
     <div id="root"></div>
