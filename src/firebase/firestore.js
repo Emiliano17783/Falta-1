@@ -305,9 +305,9 @@ export async function crearPartido(datos, uid) {
  jugadoresAnotados: 1,
  jugadores: [uid],
  jugadoresMeta,
- activo: false, // No visible en feed hasta que la cancha confirme
- estado: 'pendiente', // pendiente | confirmado | en_curso | finalizado | cancelado
- pagos: {}, // { uid: { marcadoPorOrganizador: true/false } }
+ activo: true,
+ estado: 'confirmado',
+ pagos: {},
  pagoCanchaConfirmado: false,
  creadoEn: serverTimestamp(),
  });
@@ -654,8 +654,8 @@ export async function crearPartidoBuscoRival(datos, uid) {
  organizador1: uid,
  organizador2: null,
  rival: null,
- activo: false,
- estado: 'pendiente',
+ activo: true,
+ estado: 'confirmado',
  jugadores: [uid],
  jugadoresMeta,
  jugadoresAnotados: datos.jugadoresPorEquipo || 5,

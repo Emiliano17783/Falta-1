@@ -16,7 +16,6 @@ import CanchasScreen from './screens/CanchasScreen';
 import CrearScreen from './screens/CrearScreen';
 import PerfilScreen from './screens/PerfilScreen';
 import AdminScreen from './screens/AdminScreen';
-import CanchaPanel from './screens/CanchaPanel';
 import MatchDetailScreen from './screens/MatchDetailScreen';
 import UnirseScreen from './screens/UnirseScreen';
 import BottomNav from './components/BottomNav';
@@ -43,12 +42,11 @@ const PATH_TO_TAB = {
 };
 
 export default function App() {
- const { user, perfil, loading, esCancha, esAdmin, logout } = useAuth();
+ const { user, perfil, loading, esAdmin, logout } = useAuth();
  const navigate = useNavigate();
  const location = useLocation();
  const partidoMatch = useMatch('/partidos/:id');
 
- const [canchaParaPartido, setCanchaParaPartido] = useState(null);
  const [chatPartido, setChatPartido] = useState(null);
  const [toastGlobal, setToastGlobal] = useState(null);
  const [partidosParaConfirmar, setPartidosParaConfirmar] = useState([]);
@@ -62,14 +60,13 @@ export default function App() {
  const tab = PATH_TO_TAB[location.pathname] || 'inicio';
 
  const changeTab = (t) => {
-  if (t !== 'crear') setCanchaParaPartido(null);
   navigate(TAB_PATHS[t] || '/');
  };
 
  const onVerDetalle = (p) => navigate('/partidos/' + (p.id || p));
 
  useEffect(() => {
-  if (!user || esCancha) return;
+  if (!user) return;
   const unsub = suscribirMisPartidos(user.uid, (partidos) => {
    misPartidosRef.current = partidos;
    const anteriores = estadosAnteriores.current;
@@ -110,10 +107,10 @@ export default function App() {
    setProximoPartido(proximos[0] || null);
   });
   return () => unsub();
- }, [user, esCancha]);
+ }, [user]);
 
  useEffect(() => {
-  if (!user || esCancha) return;
+  if (!user) return;
   const chequear = async () => {
    const partidos = misPartidosRef.current;
    const ahora = new Date();
@@ -158,13 +155,13 @@ export default function App() {
   chequear();
   const interval = setInterval(chequear, 30000);
   return () => clearInterval(interval);
- }, [user, esCancha]);
+ }, [user]);
 
  useEffect(() => {
-  if (!user || esCancha) return;
+  if (!user) return;
   const unsub = suscribirPartidosParaConfirmar(user.uid, setPartidosParaConfirmar);
   return () => unsub();
- }, [user, esCancha]);
+ }, [user]);
 
  if (loading) {
   return (
@@ -183,9 +180,7 @@ export default function App() {
  if (!user) return <LoginScreen />;
 
  // Usuarios con email/password deben verificar su email antes de continuar
- if (!user.emailVerified && !esCancha) return <VerificarEmailScreen />;
-
- if (esCancha) return <CanchaPanel />;
+ if (!user.emailVerified) return <VerificarEmailScreen />;
 
  // Usuarios sin cédula deben completarla antes de acceder a la app
  if (perfil && !perfil.cedula) return <CompletarCedulaScreen />;
@@ -317,10 +312,10 @@ export default function App() {
       <HomeScreen setTab={changeTab} onVerDetalle={onVerDetalle} />
      } />
      <Route path="/canchas" element={
-      <CanchasScreen onCrearPartido={(c) => { setCanchaParaPartido(c); navigate('/crear'); }} />
+      <CanchasScreen />
      } />
      <Route path="/crear" element={
-      <CrearScreen canchaPreseleccionada={canchaParaPartido} setTab={changeTab} />
+      <CrearScreen setTab={changeTab} />
      } />
      <Route path="/unirme" element={
       <UnirseScreen onVerDetalle={onVerDetalle} />
