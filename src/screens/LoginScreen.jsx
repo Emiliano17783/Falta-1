@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { validarCedula, formatearCedula } from '../utils/cedula';
 import { verificarCedulaDisponible, reservarCedula } from '../firebase/firestore';
@@ -291,135 +289,52 @@ function TabRecuperar({ onReset, onVolver }) {
  );
 }
 
-/* Tab Registro — paso 1: datos, paso 2: código WhatsApp (si hay teléfono) */
+/* Tab Registro */
 function TabRegistro() {
  const { registrarConEmail } = useAuth();
- const [step, setStep] = useState('form'); // 'form' | 'codigo'
  const [nombre, setNombre] = useState('');
  const [email, setEmail] = useState('');
- const [telefono, setTelefono] = useState('');
  const [cedula, setCedula] = useState('');
  const [password, setPassword] = useState('');
  const [password2, setPassword2] = useState('');
- const [codigo, setCodigo] = useState('');
  const [cargando, setCargando] = useState(false);
  const [error, setError] = useState(null);
 
- const telefonoLimpio = telefono.replace(/\s/g, '');
- const telefonoValido = telefono === '' || /^09\d{7}$/.test(telefonoLimpio);
  const cedulaDigitos = cedula.replace(/\D/g, '');
  const cedulaValida = validarCedula(cedula);
-
- const handleTelefono = (e) => {
-  const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-  let formatted = digits;
-  if (digits.length > 6) formatted = `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-  else if (digits.length > 3) formatted = `${digits.slice(0, 3)} ${digits.slice(3)}`;
-  setTelefono(formatted);
- };
 
  const handleCedula = (e) => {
   setCedula(e.target.value.replace(/\D/g, '').slice(0, 8));
  };
 
- // Paso 1: validar datos y (si hay teléfono) enviar código por WhatsApp
- const enviarCodigo = async (e) => {
+ const handleRegistro = async (e) => {
   e.preventDefault();
   if (password !== password2) { setError('Las contraseñas no coinciden.'); return; }
   if (password.length < 6) { setError('La contraseña necesita mínimo 6 caracteres.'); return; }
   if (!cedulaValida) { setError('La cédula ingresada no es válida.'); return; }
   setCargando(true); setError(null);
   try {
-   // Pre-chequeo de unicidad antes de crear la cuenta
    const disponible = await verificarCedulaDisponible(cedula);
    if (!disponible) {
     setError('Esta cédula ya tiene una cuenta registrada. Usá la opción Ingresar.');
     setCargando(false);
     return;
    }
-   if (telefonoLimpio) {
-    const fn = httpsCallable(functions, 'enviarCodigoVerificacion');
-    await fn({ telefono: telefonoLimpio });
-    setCargando(false);
-    setStep('codigo');
-   } else {
-    // Sin teléfono → crear cuenta y reservar cédula
-    const newUser = await registrarConEmail(nombre.trim(), email.trim(), password, {});
-    await reservarCedula(newUser.uid, cedula);
-   }
+   const newUser = await registrarConEmail(nombre.trim(), email.trim(), password, {});
+   await reservarCedula(newUser.uid, cedula);
   } catch (err) {
    const msgs = {
     'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción Ingresar.',
     'auth/invalid-email': 'El email no es válido.',
     'auth/weak-password': 'La contraseña es demasiado débil (mínimo 6 caracteres).',
-    'functions/invalid-argument': 'Número de teléfono inválido.',
-    'functions/internal': 'No se pudo enviar el código. Verificá que el número tenga WhatsApp.',
-    'functions/resource-exhausted': 'Demasiados intentos. Esperá un momento.',
    };
    setError(msgs[err.code] || err.message || 'Error inesperado. Intentá de nuevo.');
    setCargando(false);
   }
  };
 
- // Paso 2: verificar código y crear la cuenta
- const verificarYCrear = async (e) => {
-  e.preventDefault();
-  if (codigo.length < 6) { setError('Ingresá el código de 6 dígitos.'); return; }
-  setCargando(true); setError(null);
-  try {
-   const fn = httpsCallable(functions, 'verificarCodigoVerificacion');
-   await fn({ telefono: telefonoLimpio, codigo });
-   // Código correcto → crear cuenta con teléfono verificado y reservar cédula
-   const newUser = await registrarConEmail(nombre.trim(), email.trim(), password, { telefono: telefonoLimpio });
-   await reservarCedula(newUser.uid, cedula);
-  } catch (err) {
-   const msgs = {
-    'functions/unauthenticated': 'Código incorrecto. Revisá el mensaje y volvé a intentar.',
-    'functions/deadline-exceeded': 'El código venció. Volvé atrás y pedí uno nuevo.',
-    'functions/not-found': 'No hay código activo. Volvé atrás y pedí uno nuevo.',
-    'functions/resource-exhausted': 'Demasiados intentos. Volvé atrás y pedí un código nuevo.',
-    'auth/email-already-in-use': 'Ese email ya tiene una cuenta registrada. Usá la opción Ingresar.',
-   };
-   setError(msgs[err.code] || err.message || 'Error al verificar. Intentá de nuevo.');
-   setCargando(false);
-  }
- };
-
- // ── Paso 2: formulario de código ──
- if (step === 'codigo') {
-  return (
-   <form onSubmit={verificarYCrear} className="flex flex-col gap-3">
-    <div>
-     <p className="text-white font-bold text-base mb-1">Verificá tu celular</p>
-     <p className="text-f-muted text-sm leading-snug">
-      Te enviamos un código por WhatsApp al{' '}
-      <span className="text-white font-bold">+598 {telefonoLimpio.slice(1)}</span>.
-      Revisá tus mensajes.
-     </p>
-    </div>
-    <input type="text" inputMode="numeric" value={codigo}
-     onChange={e => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-     placeholder="Código de 6 dígitos" required autoFocus
-     className="input-base text-center tracking-[0.4em] text-lg" />
-    {error && <p className="text-red-400 text-sm">{error}</p>}
-    <button type="submit" disabled={cargando || codigo.length < 6} className="btn-lime mt-1">
-     {cargando ? 'Verificando...' : 'CREAR CUENTA'}
-    </button>
-    <button type="button"
-     onClick={() => { setStep('form'); setError(null); setCodigo(''); }}
-     className="text-xs text-center transition-colors"
-     style={{ color: '#3a3a3a' }}
-     onMouseEnter={e => e.currentTarget.style.color = '#54b5f0'}
-     onMouseLeave={e => e.currentTarget.style.color = '#3a3a3a'}>
-     ← Volver y cambiar el número
-    </button>
-   </form>
-  );
- }
-
- // ── Paso 1: formulario de datos ──
  return (
-  <form onSubmit={enviarCodigo} className="flex flex-col gap-3">
+  <form onSubmit={handleRegistro} className="flex flex-col gap-3">
    <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
     placeholder="Tu nombre" required className="input-base" />
    <input type="email" value={email} onChange={e => setEmail(e.target.value)}
@@ -436,35 +351,15 @@ function TabRegistro() {
      <p className="text-green-400 text-xs mt-1 px-1 font-bold">{formatearCedula(cedula)}</p>
     )}
    </div>
-   <div>
-    <div className="flex items-center gap-2">
-     <span className="text-f-muted text-sm font-mono px-3 rounded-xl flex-shrink-0 flex items-center"
-      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', height: '48px' }}>
-      +598
-     </span>
-     <input type="tel" inputMode="numeric" value={telefono}
-      onChange={handleTelefono}
-      placeholder="09X XXX XXX (opcional)"
-      className="input-base flex-1 min-w-0" />
-    </div>
-    {telefono && !telefonoValido && (
-     <p className="text-orange-400 text-xs mt-1 px-1">Formato: 09X XXX XXX (9 dígitos, empieza con 09)</p>
-    )}
-    {telefonoValido && telefonoLimpio && (
-     <p className="text-green-400 text-xs mt-1 px-1">Recibirás un código de verificación por WhatsApp</p>
-    )}
-   </div>
    <input type="password" value={password} onChange={e => setPassword(e.target.value)}
     placeholder="Contraseña (mín. 6 caracteres)" required className="input-base" />
    <input type="password" value={password2} onChange={e => setPassword2(e.target.value)}
     placeholder="Repetir contraseña" required className="input-base" />
    {error && <p className="text-red-400 text-sm">{error}</p>}
    <button type="submit"
-    disabled={cargando || !nombre || !email || !cedulaValida || !telefonoValido || !password || !password2}
+    disabled={cargando || !nombre || !email || !cedulaValida || !password || !password2}
     className="btn-lime mt-1">
-    {cargando
-     ? (telefonoLimpio ? 'Enviando código...' : 'Creando cuenta...')
-     : (telefonoLimpio ? 'ENVIAR CÓDIGO DE VERIFICACIÓN' : 'CREAR CUENTA')}
+    {cargando ? 'Creando cuenta...' : 'CREAR CUENTA'}
    </button>
   </form>
  );

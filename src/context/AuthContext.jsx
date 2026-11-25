@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import {
  onAuthStateChanged, signInWithPopup, signOut,
  createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
- sendPasswordResetEmail,
+ sendPasswordResetEmail, sendEmailVerification,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase/config';
 import { crearOActualizarUsuario, suscribirUsuario } from '../firebase/firestore';
@@ -13,6 +13,7 @@ export function AuthProvider({ children }) {
  const [user, setUser] = useState(null);
  const [perfil, setPerfil] = useState(null);
  const [loading, setLoading] = useState(true);
+ const [tick, setTick] = useState(0);
 
  useEffect(() => {
  const timeout = setTimeout(() => setLoading(false), 5000);
@@ -63,6 +64,8 @@ export function AuthProvider({ children }) {
  const result = await createUserWithEmailAndPassword(auth, email, password);
  await updateProfile(result.user, { displayName: nombre });
  await crearOActualizarUsuario({ ...result.user, displayName: nombre }, extras);
+ auth.languageCode = 'es';
+ await sendEmailVerification(result.user);
  return result.user;
  };
 
@@ -88,16 +91,24 @@ export function AuthProvider({ children }) {
  // Mantenido por compatibilidad
  const refrescarPerfil = async () => {};
 
+ // Recarga el usuario de Firebase Auth (para detectar emailVerified tras verificación)
+ const recargarUsuario = async () => {
+ if (auth.currentUser) {
+  await auth.currentUser.reload();
+  setTick(t => t + 1);
+ }
+ };
+
  // Derivar rol desde el perfil
  const esCancha = perfil?.rol === 'cancha';
  const esAdmin = perfil?.admin === true || perfil?.rol === 'admin';
 
  return (
  <AuthContext.Provider value={{
- user, perfil, loading,
+ user, perfil, loading, tick,
  esCancha, esAdmin,
  loginConGoogle, registrarConEmail, loginConEmail,
- logout, refrescarPerfil, actualizarPerfilLocal, resetearPassword,
+ logout, refrescarPerfil, actualizarPerfilLocal, resetearPassword, recargarUsuario,
  }}>
  {children}
  </AuthContext.Provider>

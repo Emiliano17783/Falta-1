@@ -6,33 +6,40 @@ import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen({ setTab }) {
  const { perfil } = useAuth();
- const [partidosHoy, setPartidosHoy] = useState(null);
- const [jugadores, setJugadores] = useState(null);
+ const [partidosMvd, setPartidosMvd] = useState(null);
+ const [partidosFlores, setPartidosFlores] = useState(null);
+ const [jugadoresMvd, setJugadoresMvd] = useState(null);
+ const [jugadoresFlores, setJugadoresFlores] = useState(null);
 
  const estaBaneado = perfil?.bloqueado || (
  perfil?.penalizacionHasta && new Date(perfil.penalizacionHasta) > new Date()
  );
 
- // Partidos activos hoy (tiempo real)
+ // Partidos activos hoy, separados por ciudad (tiempo real)
  useEffect(() => {
  try {
  const q = query(collection(db, 'partidos'), where('activo', '==', true));
  return onSnapshot(q, snap => {
  const hoy = new Date().toDateString();
- const cnt = snap.docs.filter(d => {
- const f = d.data().fechaHora;
- return f && new Date(f).toDateString() === hoy;
- }).length;
- setPartidosHoy(cnt);
+ const hoyDocs = snap.docs.filter(d => {
+  const f = d.data().fechaHora;
+  return f && new Date(f).toDateString() === hoy;
+ });
+ setPartidosMvd(hoyDocs.filter(d => d.data().ciudad !== 'Flores').length);
+ setPartidosFlores(hoyDocs.filter(d => d.data().ciudad === 'Flores').length);
  });
  } catch { return () => {}; }
  }, []);
 
- // Total jugadores registrados
+ // Jugadores registrados por ciudad
  useEffect(() => {
  getDocs(collection(db, 'usuarios'))
- .then(snap => setJugadores(snap.size))
- .catch(() => setJugadores(0));
+ .then(snap => {
+  const datos = snap.docs.map(d => d.data());
+  setJugadoresMvd(datos.filter(u => u.ciudad !== 'Flores').length);
+  setJugadoresFlores(datos.filter(u => u.ciudad === 'Flores').length);
+ })
+ .catch(() => { setJugadoresMvd(0); setJugadoresFlores(0); });
  }, []);
 
  return (
@@ -99,17 +106,35 @@ export default function HomeScreen({ setTab }) {
 
  {/* ESTADÍSTICAS EN VIVO */}
  <div className="px-5 md:px-12 py-8 border-b border-f-border" style={{ background: '#0e0e0e' }}>
- <p className="text-f-muted text-[11px] uppercase tracking-[0.2em] mb-4">En este momento</p>
- <p className="text-f-text leading-snug" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.1rem)' }}>
- Hoy hay{' '}
- <span className="font-black text-white" style={{ fontSize: 'clamp(2.2rem, 6vw, 3rem)', lineHeight: 1, letterSpacing: '-0.03em' }}>
- {partidosHoy ?? '—'}
- </span>{' '}
- {(partidosHoy ?? 0) === 1 ? 'partido activo' : 'partidos activos'} en Montevideo.
- </p>
- <p className="text-f-muted text-sm mt-4">
- <span className="text-f-text font-bold">{jugadores ?? '—'}</span> jugadores registrados en Montevideo
- </p>
+ <p className="text-f-muted text-[11px] uppercase tracking-[0.2em] mb-5">En este momento</p>
+ <div className="space-y-6">
+  <div>
+  <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-1">Montevideo</p>
+  <p className="text-f-text leading-snug" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.1rem)' }}>
+   Hoy hay{' '}
+   <span className="font-black text-white" style={{ fontSize: 'clamp(2.2rem, 6vw, 3rem)', lineHeight: 1, letterSpacing: '-0.03em' }}>
+   {partidosMvd ?? '—'}
+   </span>{' '}
+   {(partidosMvd ?? 0) === 1 ? 'partido activo' : 'partidos activos'}
+  </p>
+  <p className="text-f-muted text-sm mt-1">
+   <span className="text-f-text font-bold">{jugadoresMvd ?? '—'}</span> jugadores registrados
+  </p>
+  </div>
+  <div>
+  <p className="text-f-muted text-xs font-bold uppercase tracking-widest mb-1">Flores</p>
+  <p className="text-f-text leading-snug" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.1rem)' }}>
+   Hoy hay{' '}
+   <span className="font-black text-white" style={{ fontSize: 'clamp(2.2rem, 6vw, 3rem)', lineHeight: 1, letterSpacing: '-0.03em' }}>
+   {partidosFlores ?? '—'}
+   </span>{' '}
+   {(partidosFlores ?? 0) === 1 ? 'partido activo' : 'partidos activos'}
+  </p>
+  <p className="text-f-muted text-sm mt-1">
+   <span className="text-f-text font-bold">{jugadoresFlores ?? '—'}</span> jugadores registrados
+  </p>
+  </div>
+ </div>
  </div>
 
  </div>

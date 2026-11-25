@@ -2,7 +2,7 @@ import {
  doc, setDoc, getDoc, updateDoc, deleteDoc, collection,
  query, where, orderBy, onSnapshot, addDoc,
  serverTimestamp, increment, arrayUnion, arrayRemove, getDocs,
- limit, runTransaction,
+ limit, runTransaction, deleteField,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -287,6 +287,7 @@ export function suscribirHorariosOcupados(canchaId, fecha, callback) {
 export async function crearPartido(datos, uid) {
  // Verificar estado del usuario antes de crear
  const userSnap = await getDoc(doc(db, 'usuarios', uid));
+ const jugadoresMeta = {};
  if (userSnap.exists()) {
  const u = userSnap.data();
  if (u.bloqueado) {
@@ -296,12 +297,14 @@ export async function crearPartido(datos, uid) {
  const dias = Math.ceil((new Date(u.penalizacionHasta) - new Date()) / 86400000);
  throw new Error(`Tu cuenta está suspendida. Te quedan ${dias} día${dias !== 1 ? 's' : ''}`);
  }
+ jugadoresMeta[uid] = { nombre: u.nombre || datos.organizador || 'Jugador', foto: u.foto || null };
  }
  const ref = await addDoc(collection(db, 'partidos'), {
  ...datos,
  creadoPor: uid,
  jugadoresAnotados: 1,
  jugadores: [uid],
+ jugadoresMeta,
  activo: false, // No visible en feed hasta que la cancha confirme
  estado: 'pendiente', // pendiente | confirmado | en_curso | finalizado | cancelado
  pagos: {}, // { uid: { marcadoPorOrganizador: true/false } }
@@ -394,9 +397,20 @@ export async function anotarseAPartido(partidoId, uid) {
  const nuevosAnotados = (partido.jugadoresAnotados || 0) + 1;
  const lleno = nuevosAnotados >= partido.cupoTotal;
 
+ // Cargar foto del jugador desde usuarios_publicos para guardarla en el partido
+ let metaJugador = { nombre: '', foto: null };
+ try {
+ const pubSnap = await getDoc(doc(db, 'usuarios_publicos', uid));
+ if (pubSnap.exists()) {
+  const pd = pubSnap.data();
+  metaJugador = { nombre: pd.nombre || '', foto: pd.foto || null };
+ }
+ } catch { /* ignorar si falla — no es crítico */ }
+
  await updateDoc(ref, {
  jugadores: arrayUnion(uid),
  jugadoresAnotados: increment(1),
+ [`jugadoresMeta.${uid}`]: metaJugador,
  ...(lleno ? { activo: false, estado: 'lleno' } : {}),
  });
 }
@@ -418,6 +432,7 @@ export async function desanotarseDePartido(partidoId, uid) {
  await updateDoc(ref, {
  jugadores: arrayRemove(uid),
  jugadoresAnotados: increment(-1),
+ [`jugadoresMeta.${uid}`]: deleteField(),
  ...(partido.estado === 'lleno' ? { activo: true, estado: 'confirmado' } : {}),
  });
 
@@ -622,6 +637,7 @@ export function suscribirMisReservas(uid, callback) {
 // Crear un partido en modo "busco rival" — el organizador ya tiene su equipo completo
 export async function crearPartidoBuscoRival(datos, uid) {
  const userSnap = await getDoc(doc(db, 'usuarios', uid));
+ const jugadoresMeta = {};
  if (userSnap.exists()) {
  const u = userSnap.data();
  if (u.bloqueado) throw new Error('Tu cuenta está bloqueada permanentemente');
@@ -629,6 +645,7 @@ export async function crearPartidoBuscoRival(datos, uid) {
  const dias = Math.ceil((new Date(u.penalizacionHasta) - new Date()) / 86400000);
  throw new Error(`Tu cuenta está suspendida. Te quedan ${dias} día${dias !== 1 ? 's' : ''}`);
  }
+ jugadoresMeta[uid] = { nombre: u.nombre || datos.organizador || 'Jugador', foto: u.foto || null };
  }
  const ref = await addDoc(collection(db, 'partidos'), {
  ...datos,
@@ -640,6 +657,7 @@ export async function crearPartidoBuscoRival(datos, uid) {
  activo: false,
  estado: 'pendiente',
  jugadores: [uid],
+ jugadoresMeta,
  jugadoresAnotados: datos.jugadoresPorEquipo || 5,
  pagos: {},
  pagoCanchaConfirmado: false,

@@ -9,6 +9,7 @@ import {
  cancelarPartidoAutomatico,
 } from './firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
+import VerificarEmailScreen from './screens/VerificarEmailScreen';
 import CompletarCedulaScreen from './screens/CompletarCedulaScreen';
 import HomeScreen from './screens/HomeScreen';
 import CanchasScreen from './screens/CanchasScreen';
@@ -180,6 +181,9 @@ export default function App() {
  }
 
  if (!user) return <LoginScreen />;
+
+ // Usuarios con email/password deben verificar su email antes de continuar
+ if (!user.emailVerified && !esCancha) return <VerificarEmailScreen />;
 
  if (esCancha) return <CanchaPanel />;
 

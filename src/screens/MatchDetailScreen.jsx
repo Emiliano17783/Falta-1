@@ -310,9 +310,13 @@ export default function MatchDetailScreen({ partidoId, onBack, onChat }) {
  }}>
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-2.5">
- <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-black flex-shrink-0"
- style={{ background: 'rgba(14,165,233,0.2)', border: '1px solid rgba(84,181,240,0.3)' }}>
- {idx + 1}
+ <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden"
+ style={{ border: '1px solid rgba(84,181,240,0.3)' }}>
+ {perfilJ?.foto
+  ? <img src={perfilJ.foto} alt={nombreJ} className="w-full h-full object-cover" />
+  : <div className="w-full h-full flex items-center justify-center text-white text-sm font-black"
+      style={{ background: 'rgba(14,165,233,0.2)' }}>{idx + 1}</div>
+ }
  </div>
  <div>
  <p className="text-white text-sm font-bold">

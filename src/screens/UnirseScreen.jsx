@@ -537,6 +537,27 @@ function MiniCard({ partido, uid, nombreUsuario, baneado, nivelFutbolUsuario, on
  </div>
  )}
 
+ {/* Avatares de jugadores anotados */}
+ {partido.jugadoresMeta && Object.keys(partido.jugadoresMeta).length > 0 && (
+ <div className="flex items-center gap-1 mb-2.5">
+  {Object.entries(partido.jugadoresMeta).slice(0, 7).map(([metaUid, meta]) => (
+  <div key={metaUid} className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0"
+   style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+   {meta.foto
+   ? <img src={meta.foto} alt={meta.nombre} className="w-full h-full object-cover" />
+   : <div className="w-full h-full flex items-center justify-center font-black text-white"
+      style={{ background: 'rgba(14,165,233,0.25)', fontSize: '8px' }}>
+     {meta.nombre?.[0]?.toUpperCase() || '?'}
+    </div>
+   }
+  </div>
+  ))}
+  {Object.keys(partido.jugadoresMeta).length > 7 && (
+  <span className="text-f-muted text-xs ml-0.5">+{Object.keys(partido.jugadoresMeta).length - 7}</span>
+  )}
+ </div>
+ )}
+
  {/* Precio + botón */}
  <div className="flex items-center justify-between">
  <div>
