@@ -8,7 +8,7 @@ const NAV = [
  { id: 'perfil',   label: 'Perfil',    icon: <PerfilIcon /> },
 ];
 
-export default function Sidebar({ tab, setTab }) {
+export default function Sidebar({ tab, setTab, unreadMessages = 0 }) {
  const { user, perfil } = useAuth();
 
  return (
@@ -28,13 +28,30 @@ export default function Sidebar({ tab, setTab }) {
 
    {/* Nav items */}
    <nav className="flex flex-col gap-1 flex-1">
-    {NAV.map(({ id, label, icon }) => (
-     <button key={id} onClick={() => setTab(id)}
-      className={`sidebar-item ${tab === id ? 'active' : ''}`}>
-      <span className="text-xl">{icon}</span>
-      {label}
-     </button>
-    ))}
+    {NAV.map(({ id, label, icon }) => {
+     const badge = id === 'mensajes' && unreadMessages > 0;
+     return (
+      <button key={id} onClick={() => setTab(id)}
+       className={`sidebar-item ${tab === id ? 'active' : ''}`}>
+       <span style={{ position: 'relative', display: 'inline-flex' }}>
+        {icon}
+        {badge && (
+         <span style={{
+          position: 'absolute', top: -4, right: -7,
+          background: '#ef4444', color: '#fff', borderRadius: 999,
+          fontSize: 9, fontWeight: 900,
+          minWidth: 16, height: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          paddingLeft: 3, paddingRight: 3,
+         }}>
+          {unreadMessages > 99 ? '99+' : unreadMessages}
+         </span>
+        )}
+       </span>
+       {label}
+      </button>
+     );
+    })}
 
     {/* Crear — destacado */}
     <button onClick={() => setTab('crear')}

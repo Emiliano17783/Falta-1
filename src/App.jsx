@@ -7,6 +7,7 @@ import {
  marcarNotificacionIncompleto,
  confirmarPartidoIncompleto,
  cancelarPartidoAutomatico,
+ suscribirConversaciones,
 } from './firebase/firestore';
 import LoginScreen from './screens/LoginScreen';
 import VerificarEmailScreen from './screens/VerificarEmailScreen';
@@ -53,6 +54,7 @@ export default function App() {
  const [chatPartido, setChatPartido] = useState(null);
  const [toastGlobal, setToastGlobal] = useState(null);
  const [partidosParaConfirmar, setPartidosParaConfirmar] = useState([]);
+ const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
  const [pagosVencidosOrganizador, setPagosVencidosOrganizador] = useState([]);
  const [mostrarListaVencidos, setMostrarListaVencidos] = useState(false);
  const [partidoIncompletoPendiente, setPartidoIncompletoPendiente] = useState(null);
@@ -165,6 +167,14 @@ export default function App() {
   const unsub = suscribirPartidosParaConfirmar(user.uid, setPartidosParaConfirmar);
   return () => unsub();
  }, [user]);
+
+ useEffect(() => {
+  if (!user?.uid) { setMensajesNoLeidos(0); return; }
+  return suscribirConversaciones(user.uid, (convs) => {
+   const total = convs.reduce((sum, c) => sum + (c.noLeidos?.[user.uid] || 0), 0);
+   setMensajesNoLeidos(total);
+  });
+ }, [user?.uid]);
 
  if (loading) {
   return (
@@ -301,7 +311,7 @@ export default function App() {
     </div>
    )}
 
-   <Sidebar tab={tab} setTab={changeTab} esAdmin={esAdmin} />
+   <Sidebar tab={tab} setTab={changeTab} esAdmin={esAdmin} unreadMessages={mensajesNoLeidos} />
    <main className="app-main" style={{
     paddingBottom: '80px',
     ...(pagosVencidosOrganizador.length > 0
@@ -333,7 +343,7 @@ export default function App() {
      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
    </main>
-   <BottomNav tab={tab} setTab={changeTab} />
+   <BottomNav tab={tab} setTab={changeTab} unreadMessages={mensajesNoLeidos} />
    {chatPartido && (
     <ChatModal partido={chatPartido} onClose={() => setChatPartido(null)} />
    )}

@@ -1,4 +1,4 @@
-export default function BottomNav({ tab, setTab }) {
+export default function BottomNav({ tab, setTab, unreadMessages = 0 }) {
  const tabs = [
   { id: 'inicio',    label: 'Inicio',    icon: <HomeIcon /> },
   { id: 'unirse',    label: 'Partidos',  icon: <PartidosIcon /> },
@@ -58,6 +58,7 @@ export default function BottomNav({ tab, setTab }) {
        </button>
       );
      }
+     const badge = id === 'mensajes' && unreadMessages > 0;
      return (
       <button
        key={id}
@@ -65,7 +66,21 @@ export default function BottomNav({ tab, setTab }) {
        className="flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform"
        style={{ flex: 1 }}
       >
-       <div style={{ color: activo ? '#54b5f0' : '#5a5a5a' }}>{icon}</div>
+       <div style={{ color: activo ? '#54b5f0' : '#5a5a5a', position: 'relative', display: 'inline-flex' }}>
+        {icon}
+        {badge && (
+         <span style={{
+          position: 'absolute', top: -4, right: -7,
+          background: '#ef4444', color: '#fff', borderRadius: 999,
+          fontSize: 9, fontWeight: 900,
+          minWidth: 16, height: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          paddingLeft: 3, paddingRight: 3,
+         }}>
+          {unreadMessages > 99 ? '99+' : unreadMessages}
+         </span>
+        )}
+       </div>
        <span
         style={{
          fontSize: 9,

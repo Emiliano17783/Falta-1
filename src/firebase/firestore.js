@@ -971,6 +971,7 @@ export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
    fotos: { [uid1]: foto1 || null, [uid2]: foto2 },
    ultimoMensaje: texto,
    ultimaFecha: serverTimestamp(),
+   noLeidos: { [uid1]: 0, [uid2]: 1 },
   });
  } else {
   await updateDoc(convRef, {
@@ -978,6 +979,7 @@ export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
    [`fotos.${uid1}`]: foto1 || null,
    ultimoMensaje: texto,
    ultimaFecha: serverTimestamp(),
+   [`noLeidos.${uid2}`]: increment(1),
   });
  }
  await addDoc(collection(db, 'conversaciones', convId, 'mensajes'), {
@@ -985,6 +987,12 @@ export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
   texto,
   fecha: serverTimestamp(),
  });
+}
+
+export async function marcarConversacionLeida(convId, uid) {
+ try {
+  await updateDoc(doc(db, 'conversaciones', convId), { [`noLeidos.${uid}`]: 0 });
+ } catch {}
 }
 
 export function suscribirConversaciones(uid, callback) {

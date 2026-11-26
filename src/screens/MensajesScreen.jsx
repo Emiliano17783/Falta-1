@@ -5,6 +5,7 @@ import {
  suscribirConversaciones,
  suscribirMensajesDirectos,
  enviarMensajeDirecto,
+ marcarConversacionLeida,
 } from '../firebase/firestore';
 
 // ── Chat individual ────────────────────────────────────────────────────────────
@@ -17,6 +18,10 @@ function Conversacion({ conv, uid, perfil, onBack }) {
  useEffect(() => {
   return suscribirMensajesDirectos(conv.id, setMensajes);
  }, [conv.id]);
+
+ useEffect(() => {
+  marcarConversacionLeida(conv.id, uid);
+ }, [conv.id, uid]);
 
  useEffect(() => {
   endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,6 +252,7 @@ export default function MensajesScreen() {
         const foto = conv.fotos?.[otroUid];
         const ultimo = conv.ultimoMensaje || '';
         const fecha = conv.ultimaFecha?.toDate?.();
+        const noLeidos = conv.noLeidos?.[uid] || 0;
         return (
          <button key={conv.id} onClick={() => abrirConvExistente(conv)}
           className="w-full flex items-center gap-4 px-5 py-4 border-b active:bg-white/5 transition-colors text-left"
@@ -258,14 +264,22 @@ export default function MensajesScreen() {
            }
           </div>
           <div className="flex-1 min-w-0">
-           <p className="text-white font-bold text-sm truncate">{nombre}</p>
-           <p className="text-f-muted text-xs truncate mt-0.5">{ultimo}</p>
+           <p className={`text-sm truncate ${noLeidos > 0 ? 'text-white font-black' : 'text-white font-bold'}`}>{nombre}</p>
+           <p className={`text-xs truncate mt-0.5 ${noLeidos > 0 ? 'text-white/70' : 'text-f-muted'}`}>{ultimo}</p>
           </div>
-          {fecha && (
-           <span className="text-f-muted text-[10px] flex-shrink-0">
-            {fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
-           </span>
-          )}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+           {fecha && (
+            <span className="text-f-muted text-[10px]">
+             {fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+           )}
+           {noLeidos > 0 && (
+            <span className="rounded-full flex items-center justify-center text-white font-black"
+             style={{ background: '#ef4444', fontSize: 10, minWidth: 18, height: 18, paddingLeft: 4, paddingRight: 4 }}>
+             {noLeidos > 9 ? '9+' : noLeidos}
+            </span>
+           )}
+          </div>
          </button>
         );
        })}
