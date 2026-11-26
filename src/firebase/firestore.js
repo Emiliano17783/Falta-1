@@ -904,3 +904,63 @@ export async function enviarReporte(uid, texto) {
   creadoEn: serverTimestamp(),
  });
 }
+
+// MENSAJES DIRECTOS
+
+function getConvId(uid1, uid2) {
+ return [uid1, uid2].sort().join('_');
+}
+
+export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
+ const convId = getConvId(uid1, uid2);
+ const convRef = doc(db, 'conversaciones', convId);
+ const convSnap = await getDoc(convRef);
+ if (!convSnap.exists()) {
+  let nombre2 = 'Jugador', foto2 = null;
+  try {
+   const pub = await getDoc(doc(db, 'usuarios_publicos', uid2));
+   if (pub.exists()) { nombre2 = pub.data().nombre || 'Jugador'; foto2 = pub.data().foto || null; }
+  } catch {}
+  await setDoc(convRef, {
+   participantes: [uid1, uid2].sort(),
+   nombres: { [uid1]: nombre1 || 'Jugador', [uid2]: nombre2 },
+   fotos: { [uid1]: foto1 || null, [uid2]: foto2 },
+   ultimoMensaje: texto,
+   ultimaFecha: serverTimestamp(),
+  });
+ } else {
+  await updateDoc(convRef, {
+   [`nombres.${uid1}`]: nombre1 || 'Jugador',
+   [`fotos.${uid1}`]: foto1 || null,
+   ultimoMensaje: texto,
+   ultimaFecha: serverTimestamp(),
+  });
+ }
+ await addDoc(collection(db, 'conversaciones', convId, 'mensajes'), {
+  de: uid1,
+  texto,
+  fecha: serverTimestamp(),
+ });
+}
+
+export function suscribirConversaciones(uid, callback) {
+ const q = query(
+  collection(db, 'conversaciones'),
+  where('participantes', 'array-contains', uid),
+  orderBy('ultimaFecha', 'desc'),
+ );
+ return onSnapshot(q, (snap) => {
+  callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ }, () => callback([]));
+}
+
+export function suscribirMensajesDirectos(convId, callback) {
+ const q = query(
+  collection(db, 'conversaciones', convId, 'mensajes'),
+  orderBy('fecha', 'asc'),
+  limit(200),
+ );
+ return onSnapshot(q, (snap) => {
+  callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+ }, () => callback([]));
+}
