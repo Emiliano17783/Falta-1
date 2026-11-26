@@ -341,6 +341,7 @@ exports.sincronizarUsuarioPublico = onDocumentWritten(
     const pub = {
       uid,
       nombre: data.nombre || 'Jugador',
+      nombreUsuario: data.nombreUsuario || null,
       foto: data.foto || null,
       ciudad: data.ciudad || 'Montevideo',
       nivelFutbol: data.nivelFutbol || 'Intermedio',

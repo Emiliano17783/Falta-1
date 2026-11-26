@@ -53,6 +53,7 @@ export async function crearOActualizarUsuario(user, extras = {}) {
   await setDoc(ref, {
    uid: user.uid,
    nombre,
+   nombreUsuario: null,
    email: user.email,
    foto,
    telefono: extras.telefono || null,
@@ -80,6 +81,7 @@ export async function crearOActualizarUsuario(user, extras = {}) {
   await setDoc(doc(db, 'usuarios_publicos', user.uid), {
    uid: user.uid,
    nombre,
+   nombreUsuario: pubData.nombreUsuario || null,
    foto,
    ciudad: pubData.ciudad || 'Montevideo',
    nivelFutbol: pubData.nivelFutbol || 'Intermedio',
@@ -852,7 +854,20 @@ export async function buscarJugadores(textoBusqueda) {
  if (!texto) return [];
  return snap.docs
   .map(d => ({ id: d.id, ...d.data() }))
-  .filter(u => u.nombre?.toLowerCase().includes(texto));
+  .filter(u =>
+   u.nombre?.toLowerCase().includes(texto) ||
+   u.nombreUsuario?.toLowerCase().includes(texto)
+  );
+}
+
+// Actualiza campos públicos en usuarios y usuarios_publicos a la vez
+export async function actualizarCamposPublicos(uid, datos) {
+ await updateDoc(doc(db, 'usuarios', uid), datos);
+ const CAMPOS_PUBLICOS = ['nombre', 'foto', 'ciudad', 'nombreUsuario', 'nivelFutbol'];
+ const pub = Object.fromEntries(Object.entries(datos).filter(([k]) => CAMPOS_PUBLICOS.includes(k)));
+ if (Object.keys(pub).length > 0) {
+  try { await updateDoc(doc(db, 'usuarios_publicos', uid), pub); } catch { /* ok */ }
+ }
 }
 
 // BUSCAR CANCHAS (búsqueda client-side sobre colección canchas)

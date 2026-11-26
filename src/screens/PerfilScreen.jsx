@@ -3,7 +3,7 @@ import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCre
 import { auth } from '../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import {
- actualizarPerfil, actualizarFotoPerfil, actualizarPerfilesDeporte,
+ actualizarFotoPerfil, actualizarPerfilesDeporte, actualizarCamposPublicos,
  suscribirMisPartidos,
  buscarJugadores, buscarCanchasPublicas,
  bloquearJugador, desbloquearJugador, obtenerPerfilesBloqueados,
@@ -496,6 +496,7 @@ function EditarPerfilDeporte({ perfil, user, nivelColor, onBack, onGuardado, onA
 // ══════════════════════════════════════════════════════════════════════════════
 function InfoPersonal({ perfil, user, nivelColor, onBack, onGuardado, onActualizarLocal }) {
  const [nombre, setNombre] = useState(perfil?.nombre || user?.displayName || '');
+ const [nombreUsuario, setNombreUsuario] = useState(perfil?.nombreUsuario || '');
  const [ciudad, setCiudad] = useState(perfil?.ciudad || 'Montevideo');
  const [previewFoto, setPreviewFoto] = useState(perfil?.foto || user?.photoURL || null);
  const [subiendoFoto, setSubiendoFoto] = useState(false);
@@ -533,7 +534,9 @@ function InfoPersonal({ perfil, user, nivelColor, onBack, onGuardado, onActualiz
     await updateProfile(auth.currentUser, { displayName: nombreNuevo });
     updates.nombre = nombreNuevo;
    }
-   await actualizarPerfil(user.uid, updates);
+   const nuNormalized = nombreUsuario.trim().toLowerCase().replace(/[^a-z0-9_.]/g, '').slice(0, 30);
+   updates.nombreUsuario = nuNormalized || null;
+   await actualizarCamposPublicos(user.uid, updates);
    onActualizarLocal?.(updates);
    await onGuardado?.();
    onBack();
@@ -569,6 +572,19 @@ function InfoPersonal({ perfil, user, nivelColor, onBack, onGuardado, onActualiz
     <div>
      <label className="text-f-muted text-xs font-black uppercase tracking-widest block mb-2">Nombre</label>
      <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Tu nombre" className="input-base" />
+    </div>
+
+    {/* Nombre de usuario */}
+    <div>
+     <label className="text-f-muted text-xs font-black uppercase tracking-widest block mb-2">Nombre de usuario</label>
+     <div className="relative">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-f-muted font-bold text-sm select-none">@</span>
+      <input type="text" value={nombreUsuario} onChange={e => setNombreUsuario(e.target.value)}
+       placeholder="tu_nombre" maxLength={30}
+       className="input-base pl-8"
+       autoCapitalize="none" autoCorrect="off" spellCheck="false" />
+     </div>
+     <p className="text-f-muted text-xs mt-1.5">Solo letras, números, puntos y guiones bajos. Otros jugadores te pueden buscar por acá.</p>
     </div>
 
     {/* Ciudad */}
@@ -655,8 +671,8 @@ function BuscarJugadores({ onBack, myUid, onVerPerfil }) {
        </div>
        <div className="flex-1 min-w-0 text-left">
         <p className="text-white font-bold text-sm truncate">{j.nombre}</p>
-        <p className="text-f-muted text-xs">
-         {j.perfilFutbol?.posicion || j.posicion || 'Por definir'} · {j.ciudad || 'Montevideo'}
+        <p className="text-f-muted text-xs truncate">
+         {j.nombreUsuario ? `@${j.nombreUsuario} · ` : ''}{j.ciudad || 'Montevideo'}
         </p>
        </div>
        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style={{ color: '#5a5a5a' }}>
@@ -711,6 +727,9 @@ function PerfilJugadorPublico({ jugador, myUid, onBack, bloqueados, onEnviarMens
       }
      </div>
      <p className="text-white text-xl font-black uppercase">{jugador.nombre}</p>
+     {jugador.nombreUsuario && (
+      <p className="text-f-accent text-sm font-bold">@{jugador.nombreUsuario}</p>
+     )}
      <p className="text-f-muted text-sm">{jugador.ciudad || 'Montevideo'}</p>
     </div>
 
