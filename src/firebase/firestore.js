@@ -818,6 +818,26 @@ export async function reservarCedula(uid, cedula) {
  tx.set(cedulaRef, { uid });
  tx.update(doc(db, 'usuarios', uid), { cedula: cedNorm });
  });
+ // Sync public profile after completing registration
+ try {
+  const userSnap = await getDoc(doc(db, 'usuarios', uid));
+  if (userSnap.exists()) {
+   const data = userSnap.data();
+   const pub = {
+    uid,
+    nombre: data.nombre || 'Jugador',
+    nombreUsuario: data.nombreUsuario || null,
+    foto: data.foto || null,
+    ciudad: data.ciudad || 'Montevideo',
+    nivelFutbol: data.nivelFutbol || 'Intermedio',
+    reputacion: data.reputacion ?? 5,
+    partidosJugados: data.partidosJugados || 0,
+   };
+   if (data.perfilFutbol) pub.perfilFutbol = data.perfilFutbol;
+   if (data.perfilPadel) pub.perfilPadel = data.perfilPadel;
+   await setDoc(doc(db, 'usuarios_publicos', uid), pub, { merge: true });
+  }
+ } catch { /* ok */ }
 }
 
 // Admin: actualizar la cédula de un usuario (elimina la vieja y registra la nueva)
@@ -888,7 +908,7 @@ export async function actualizarCamposPublicos(uid, datos) {
  const CAMPOS_PUBLICOS = ['nombre', 'foto', 'ciudad', 'nombreUsuario', 'nivelFutbol'];
  const pub = Object.fromEntries(Object.entries(datos).filter(([k]) => CAMPOS_PUBLICOS.includes(k)));
  if (Object.keys(pub).length > 0) {
-  try { await updateDoc(doc(db, 'usuarios_publicos', uid), pub); } catch { /* ok */ }
+  try { await setDoc(doc(db, 'usuarios_publicos', uid), pub, { merge: true }); } catch { /* ok */ }
  }
 }
 
