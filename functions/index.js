@@ -338,12 +338,17 @@ exports.sincronizarUsuarioPublico = onDocumentWritten(
     }
 
     const data = event.data.after.data();
-    await ref.set({
+    const pub = {
       uid,
       nombre: data.nombre || 'Jugador',
       foto: data.foto || null,
+      ciudad: data.ciudad || 'Montevideo',
       nivelFutbol: data.nivelFutbol || 'Intermedio',
       reputacion: data.reputacion ?? 5,
-    });
+      partidosJugados: data.partidosJugados || 0,
+    };
+    if (data.perfilFutbol) pub.perfilFutbol = data.perfilFutbol;
+    if (data.perfilPadel) pub.perfilPadel = data.perfilPadel;
+    await ref.set(pub, { merge: true });
   }
 );

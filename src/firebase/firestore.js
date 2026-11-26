@@ -47,41 +47,48 @@ export async function seedCanchas(canchas) {
 export async function crearOActualizarUsuario(user, extras = {}) {
  const ref = doc(db, 'usuarios', user.uid);
  const snap = await getDoc(ref);
+ const nombre = snap.exists() ? (snap.data().nombre || user.displayName || 'Jugador') : (user.displayName || 'Jugador');
+ const foto = snap.exists() ? (snap.data().foto || user.photoURL || null) : (user.photoURL || null);
  if (!snap.exists()) {
- const nombre = user.displayName || 'Jugador';
- const foto = user.photoURL || null;
- await setDoc(ref, {
- uid: user.uid,
- nombre,
- email: user.email,
- foto,
- telefono: extras.telefono || null,
- telefonoVerificado: extras.telefonoVerificado || false,
- posicion: 'Por definir',
- nivelFutbol: 'Intermedio',
- ciudad: 'Montevideo',
- partidosJugados: 0,
- reputacion: 5,
- noShows: 0,
- advertencia: false,
- insignias: [],
- penalizacionHasta: null,
- bloqueado: false,
- deudaPendiente: false,
- deudaPartidoId: null,
- admin: false,
- rol: 'jugador', // jugador | cancha | admin
- creadoEn: serverTimestamp(),
- });
- // Escribir perfil público para que otros usuarios puedan verlo
- await setDoc(doc(db, 'usuarios_publicos', user.uid), {
- uid: user.uid,
- nombre,
- foto,
- nivelFutbol: 'Intermedio',
- reputacion: 5,
- });
+  await setDoc(ref, {
+   uid: user.uid,
+   nombre,
+   email: user.email,
+   foto,
+   telefono: extras.telefono || null,
+   telefonoVerificado: extras.telefonoVerificado || false,
+   posicion: 'Por definir',
+   nivelFutbol: 'Intermedio',
+   ciudad: 'Montevideo',
+   partidosJugados: 0,
+   reputacion: 5,
+   noShows: 0,
+   advertencia: false,
+   insignias: [],
+   penalizacionHasta: null,
+   bloqueado: false,
+   deudaPendiente: false,
+   deudaPartidoId: null,
+   admin: false,
+   rol: 'jugador',
+   creadoEn: serverTimestamp(),
+  });
  }
+ // Sincronizar perfil público en cada login (crea o actualiza)
+ try {
+  const pubData = snap.exists() ? snap.data() : {};
+  await setDoc(doc(db, 'usuarios_publicos', user.uid), {
+   uid: user.uid,
+   nombre,
+   foto,
+   ciudad: pubData.ciudad || 'Montevideo',
+   nivelFutbol: pubData.nivelFutbol || 'Intermedio',
+   reputacion: pubData.reputacion ?? 5,
+   partidosJugados: pubData.partidosJugados || 0,
+   ...(pubData.perfilFutbol ? { perfilFutbol: pubData.perfilFutbol } : {}),
+   ...(pubData.perfilPadel ? { perfilPadel: pubData.perfilPadel } : {}),
+  }, { merge: true });
+ } catch { /* si falla no bloquea el login */ }
  return ref;
 }
 
