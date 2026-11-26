@@ -860,6 +860,28 @@ export async function buscarJugadores(textoBusqueda) {
   );
 }
 
+// Backfill: sincroniza usuarios_publicos para todos los usuarios existentes (admin)
+export async function sincronizarTodosPerfilesPublicos(usuarios) {
+ await Promise.all(usuarios.map(u => {
+  const uid = u.uid || u.id;
+  if (!uid) return Promise.resolve();
+  const pub = {
+   uid,
+   nombre: u.nombre || 'Jugador',
+   nombreUsuario: u.nombreUsuario || null,
+   foto: u.foto || null,
+   ciudad: u.ciudad || 'Montevideo',
+   nivelFutbol: u.nivelFutbol || 'Intermedio',
+   reputacion: u.reputacion ?? 5,
+   partidosJugados: u.partidosJugados || 0,
+  };
+  if (u.perfilFutbol) pub.perfilFutbol = u.perfilFutbol;
+  if (u.perfilPadel) pub.perfilPadel = u.perfilPadel;
+  return setDoc(doc(db, 'usuarios_publicos', uid), pub, { merge: true });
+ }));
+ return usuarios.length;
+}
+
 // Actualiza campos públicos en usuarios y usuarios_publicos a la vez
 export async function actualizarCamposPublicos(uid, datos) {
  await updateDoc(doc(db, 'usuarios', uid), datos);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
  obtenerTodosUsuarios, suscribirTodosPartidos,
  eliminarPartidoAdmin, banearUsuario, levantarBan,
- actualizarCedulaAdmin,
+ actualizarCedulaAdmin, sincronizarTodosPerfilesPublicos,
 } from '../firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import { validarCedula, formatearCedula } from '../utils/cedula';
@@ -14,6 +14,8 @@ export default function AdminScreen({ setTab }) {
  const [usuarios, setUsuarios] = useState([]);
  const [cargandoU, setCargandoU] = useState(false);
  const [busqueda, setBusqueda] = useState('');
+ const [sincronizando, setSincronizando] = useState(false);
+ const [syncMsg, setSyncMsg] = useState(null);
 
  if (!perfil?.admin) {
   return (
@@ -32,6 +34,17 @@ export default function AdminScreen({ setTab }) {
   const unsub = suscribirTodosPartidos(setPartidos);
   return unsub;
  }, []);
+
+ const handleSincronizar = async () => {
+  setSincronizando(true); setSyncMsg(null);
+  try {
+   const todos = await obtenerTodosUsuarios();
+   const n = await sincronizarTodosPerfilesPublicos(todos);
+   setSyncMsg(`✓ ${n} perfiles sincronizados`);
+   setTimeout(() => setSyncMsg(null), 4000);
+  } catch { setSyncMsg('Error al sincronizar'); }
+  setSincronizando(false);
+ };
 
  const cargarUsuarios = async () => {
   setCargandoU(true);
@@ -119,7 +132,7 @@ export default function AdminScreen({ setTab }) {
     </div>
 
     {/* Tabs */}
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex gap-2 flex-wrap items-center">
      {[
       { id: 'partidos', label: 'Partidos' },
       { id: 'usuarios', label: 'Usuarios' },
@@ -130,6 +143,11 @@ export default function AdminScreen({ setTab }) {
        {t.label}
       </button>
      ))}
+     <button onClick={handleSincronizar} disabled={sincronizando}
+      className="ml-auto px-4 py-2 rounded-lg font-bold text-xs uppercase border border-purple-800 text-purple-400 disabled:opacity-50 transition-all active:scale-95">
+      {sincronizando ? 'Sincronizando...' : 'Sincronizar perfiles'}
+     </button>
+     {syncMsg && <span className="text-xs font-bold text-green-400">{syncMsg}</span>}
     </div>
    </div>
 
