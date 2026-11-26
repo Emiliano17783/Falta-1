@@ -15,6 +15,7 @@ import HomeScreen from './screens/HomeScreen';
 import CanchasScreen from './screens/CanchasScreen';
 import CrearScreen from './screens/CrearScreen';
 import PerfilScreen from './screens/PerfilScreen';
+import MensajesScreen from './screens/MensajesScreen';
 import AdminScreen from './screens/AdminScreen';
 import MatchDetailScreen from './screens/MatchDetailScreen';
 import UnirseScreen from './screens/UnirseScreen';
@@ -29,6 +30,7 @@ const TAB_PATHS = {
  crear: '/crear',
  unirse: '/unirme',
  perfil: '/perfil',
+ mensajes: '/mensajes',
  admin: '/admin',
 };
 
@@ -38,6 +40,7 @@ const PATH_TO_TAB = {
  '/crear': 'crear',
  '/unirme': 'unirse',
  '/perfil': 'perfil',
+ '/mensajes': 'mensajes',
  '/admin': 'admin',
 };
 
@@ -323,6 +326,7 @@ export default function App() {
      <Route path="/perfil" element={
       <PerfilScreen setTab={changeTab} onVerDetalle={onVerDetalle} />
      } />
+     <Route path="/mensajes" element={<MensajesScreen />} />
      <Route path="/admin" element={
       esAdmin ? <AdminScreen setTab={changeTab} /> : <Navigate to="/" replace />
      } />

@@ -66,6 +66,14 @@
         { "fieldPath": "canchaId", "order": "ASCENDING" },
         { "fieldPath": "fecha", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "conversaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participantes", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "ultimaFecha", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
