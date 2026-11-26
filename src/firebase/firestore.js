@@ -756,6 +756,7 @@ export function suscribirHorariosBloqueados(canchaId, callback) {
 // Guarda en Firestore la URL de la foto ya subida a Cloudinary
 export async function actualizarFotoPerfil(uid, url) {
  await updateDoc(doc(db, 'usuarios', uid), { foto: url });
+ try { await updateDoc(doc(db, 'usuarios_publicos', uid), { foto: url }); } catch { /* ok */ }
 }
 
 // Buscar usuario por email (para asignar rol cancha desde AdminScreen)
@@ -825,5 +826,81 @@ export async function actualizarCedulaAdmin(uid, cedulaVieja, cedulaNueva) {
  }
  tx.set(nuevaRef, { uid });
  tx.update(doc(db, 'usuarios', uid), { cedula: cedNorm });
+ });
+}
+
+// PERFILES POR DEPORTE
+
+export async function actualizarPerfilesDeporte(uid, perfilFutbol, perfilPadel) {
+ const updates = { perfilFutbol, perfilPadel };
+ await updateDoc(doc(db, 'usuarios', uid), updates);
+ try { await updateDoc(doc(db, 'usuarios_publicos', uid), updates); } catch { /* ok */ }
+}
+
+// BUSCAR JUGADORES (búsqueda client-side sobre usuarios_publicos)
+
+export async function buscarJugadores(textoBusqueda) {
+ const snap = await getDocs(collection(db, 'usuarios_publicos'));
+ const texto = textoBusqueda.toLowerCase().trim();
+ if (!texto) return [];
+ return snap.docs
+  .map(d => ({ id: d.id, ...d.data() }))
+  .filter(u => u.nombre?.toLowerCase().includes(texto));
+}
+
+// BUSCAR CANCHAS (búsqueda client-side sobre colección canchas)
+
+export async function buscarCanchasPublicas(textoBusqueda) {
+ const snap = await getDocs(collection(db, 'canchas'));
+ const texto = textoBusqueda.toLowerCase().trim();
+ if (!texto) return [];
+ return snap.docs
+  .map(d => ({ id: d.id, ...d.data() }))
+  .filter(c => c.nombre?.toLowerCase().includes(texto));
+}
+
+// BLOQUEAR / DESBLOQUEAR JUGADORES
+
+export async function bloquearJugador(uid, bloqueadoUid) {
+ await updateDoc(doc(db, 'usuarios', uid), {
+  bloqueados: arrayUnion(bloqueadoUid),
+ });
+}
+
+export async function desbloquearJugador(uid, bloqueadoUid) {
+ await updateDoc(doc(db, 'usuarios', uid), {
+  bloqueados: arrayRemove(bloqueadoUid),
+ });
+}
+
+export async function obtenerPerfilesBloqueados(uids) {
+ if (!uids?.length) return [];
+ const perfiles = [];
+ await Promise.all(uids.map(async (uid) => {
+  try {
+   const snap = await getDoc(doc(db, 'usuarios_publicos', uid));
+   if (snap.exists()) perfiles.push({ id: snap.id, ...snap.data() });
+  } catch { /* ok */ }
+ }));
+ return perfiles;
+}
+
+// SUGERENCIAS
+
+export async function enviarSugerencia(uid, texto) {
+ await addDoc(collection(db, 'sugerencias'), {
+  uid,
+  texto: texto.trim(),
+  creadoEn: serverTimestamp(),
+ });
+}
+
+// REPORTES / SOPORTE
+
+export async function enviarReporte(uid, texto) {
+ await addDoc(collection(db, 'reportes'), {
+  uid,
+  texto: texto.trim(),
+  creadoEn: serverTimestamp(),
  });
 }

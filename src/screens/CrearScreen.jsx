@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { crearPartido, crearPartidoBuscoRival } from '../firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { CIUDADES } from '../data/canchas';
+import { CIUDADES, CANCHAS_PADEL } from '../data/canchas';
 
 const NIVELES = ['Principiante', 'Intermedio', 'Avanzado'];
 const HORARIOS = [
@@ -26,12 +26,24 @@ export default function CrearScreen({ setTab }) {
  const [ciudad, setCiudad] = useState(perfil?.ciudad || 'Montevideo');
  const [fecha, setFecha] = useState(0);
  const [horario, setHorario] = useState('20:00');
+
+ // Fútbol — campos manuales
  const [nombreCancha, setNombreCancha] = useState('');
  const [barrio, setBarrio] = useState('');
  const [precioTotalCancha, setPrecioTotalCancha] = useState('');
+
+ // Pádel — cancha desde lista
+ const [canchaIdPadel, setCanchaIdPadel] = useState('');
+ const [mostrarListaPadel, setMostrarListaPadel] = useState(false);
+
  const [paso, setPaso] = useState('form');
  const [errorMsg, setErrorMsg] = useState('');
  const [partidoIdCreado, setPartidoIdCreado] = useState(null);
+
+ // Reset cancha pádel al cambiar ciudad
+ useEffect(() => {
+  setCanchaIdPadel('');
+ }, [ciudad, deporte]);
 
  const OPCIONES_FECHA = Array.from({ length: 30 }, (_, i) => {
   const d = new Date();
@@ -49,6 +61,18 @@ export default function CrearScreen({ setTab }) {
  const precioNum = Number(precioTotalCancha) || 0;
  const precioPorJugador = precioNum > 0 ? Math.ceil(precioNum / cupoTotal) : 0;
 
+ // Canchas de pádel filtradas por ciudad
+ const canchasPadelFiltradas = CANCHAS_PADEL.filter(c => c.ciudad === ciudad);
+ // Organizadas por barrio
+ const canchasPorBarrioPadel = canchasPadelFiltradas.reduce((acc, c) => {
+  if (!acc[c.barrio]) acc[c.barrio] = [];
+  acc[c.barrio].push(c);
+  return acc;
+ }, {});
+
+ const canchaSelecPadel = CANCHAS_PADEL.find(c => c.id === canchaIdPadel);
+ const precioPadelPorJugador = canchaSelecPadel ? Math.ceil(canchaSelecPadel.precioPorHora / cupoTotal) : 0;
+
  // Solo mostrar horarios con al menos 1 hora de anticipación (para hoy)
  const horariosDisponibles = HORARIOS.filter(h => {
   if (fecha !== 0) return true;
@@ -58,7 +82,6 @@ export default function CrearScreen({ setTab }) {
   return horaPartido.getTime() - new Date().getTime() >= 60 * 60 * 1000;
  });
 
- // Si el horario seleccionado ya no está disponible (hoy pasó la hora), resetear
  useEffect(() => {
   if (!horariosDisponibles.includes(horario)) setHorario('');
  }, [fecha]);
@@ -72,26 +95,51 @@ export default function CrearScreen({ setTab }) {
  };
 
  const handlePublicar = async () => {
-  if (!nombreCancha.trim() || !horario) {
-   setErrorMsg('Completá el nombre de la cancha y el horario antes de publicar.');
+  if (deporte === 'padel' && !canchaIdPadel) {
+   setErrorMsg('Elegí una cancha de pádel antes de publicar.');
+   return;
+  }
+  if (deporte === 'futbol' && !nombreCancha.trim()) {
+   setErrorMsg('Completá el nombre de la cancha antes de publicar.');
+   return;
+  }
+  if (!horario) {
+   setErrorMsg('Elegí un horario antes de publicar.');
    return;
   }
   setPaso('publicando');
   setErrorMsg('');
   try {
-   const datos = {
-    deporte,
-    nombreCancha: nombreCancha.trim(),
-    barrio: barrio.trim(),
-    ciudad,
-    modalidad: modalidadFinal,
-    nivel,
-    fechaHora: getFechaReal(),
-    cupoTotal,
-    precioPorJugador,
-    precioTotalCancha: precioNum,
-    organizador: perfil?.nombre || user?.displayName || 'Vos',
-   };
+   let datos;
+   if (deporte === 'padel') {
+    datos = {
+     deporte,
+     nombreCancha: canchaSelecPadel?.nombre || 'Cancha de pádel',
+     barrio: canchaSelecPadel?.barrio || '',
+     ciudad,
+     modalidad: modalidadFinal,
+     nivel,
+     fechaHora: getFechaReal(),
+     cupoTotal,
+     precioPorJugador: precioPadelPorJugador,
+     precioTotalCancha: canchaSelecPadel?.precioPorHora || 0,
+     organizador: perfil?.nombre || user?.displayName || 'Vos',
+    };
+   } else {
+    datos = {
+     deporte,
+     nombreCancha: nombreCancha.trim(),
+     barrio: barrio.trim(),
+     ciudad,
+     modalidad: modalidadFinal,
+     nivel,
+     fechaHora: getFechaReal(),
+     cupoTotal,
+     precioPorJugador,
+     precioTotalCancha: precioNum,
+     organizador: perfil?.nombre || user?.displayName || 'Vos',
+    };
+   }
    let nuevoId;
    if (modo === 'rival') {
     nuevoId = await crearPartidoBuscoRival(
@@ -120,6 +168,7 @@ export default function CrearScreen({ setTab }) {
  }
 
  if (paso === 'exito') {
+  const nombreDisplay = deporte === 'padel' ? canchaSelecPadel?.nombre : nombreCancha;
   return (
    <div className="min-h-screen flex flex-col items-center justify-center font-barlow bg-f-bg px-5 animate-fade-in">
     <h2 className="text-f-accent text-3xl font-black uppercase text-center">
@@ -130,21 +179,14 @@ export default function CrearScreen({ setTab }) {
       ? 'Tu desafío ya está visible. Cuando otro equipo lo acepte, quedás coordinados entre organizadores.'
       : 'Tu partido ya aparece en el feed para que se anoten jugadores.'}
     </p>
-    {precioNum > 0 && (
-     <div className="bg-f-card border border-f-border rounded-xl p-4 mt-6 w-full max-w-xs">
-      <p className="text-f-muted text-sm text-center leading-snug">
-       El pago de la cancha se hace en efectivo el día del partido.
-      </p>
-     </div>
-    )}
     {partidoIdCreado && (
      <button
       onClick={async () => {
        const url = `${window.location.origin}/?partido=${partidoIdCreado}`;
        const fechaLabel = OPCIONES_FECHA[fecha]?.label?.toLowerCase() || '';
        const text = modo === 'rival'
-        ? `¡Buscamos rival! ${nombreCancha} — ${fechaLabel} a las ${horario}hs`
-        : `¡Unite al partido! ${nombreCancha} — ${fechaLabel} a las ${horario}hs`;
+        ? `¡Buscamos rival! ${nombreDisplay} — ${fechaLabel} a las ${horario}hs`
+        : `¡Unite al partido! ${nombreDisplay} — ${fechaLabel} a las ${horario}hs`;
        if (navigator.share) {
         try { await navigator.share({ title: 'Falta 1', text, url }); } catch (_) {}
        } else {
@@ -317,58 +359,120 @@ export default function CrearScreen({ setTab }) {
      </div>
     </div>
 
-    {/* Nombre de la cancha */}
-    <div>
-     <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
-      Nombre de la cancha
-     </label>
-     <input
-      type="text"
-      value={nombreCancha}
-      onChange={e => setNombreCancha(e.target.value)}
-      placeholder="Ej: Cancha El Parque, Club Los Pinos..."
-      className="w-full bg-f-card border border-f-border rounded-xl px-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
-     />
-    </div>
+    {/* ===== FÚTBOL: campos manuales ===== */}
+    {deporte === 'futbol' && (
+     <>
+      <div>
+       <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
+        Nombre de la cancha
+       </label>
+       <input
+        type="text"
+        value={nombreCancha}
+        onChange={e => setNombreCancha(e.target.value)}
+        placeholder="Ej: Cancha El Parque, Club Los Pinos..."
+        className="w-full bg-f-card border border-f-border rounded-xl px-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
+       />
+      </div>
+      <div>
+       <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
+        Barrio <span className="text-f-muted font-normal normal-case">(opcional)</span>
+       </label>
+       <input
+        type="text"
+        value={barrio}
+        onChange={e => setBarrio(e.target.value)}
+        placeholder="Ej: Pocitos, Tres Cruces..."
+        className="w-full bg-f-card border border-f-border rounded-xl px-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
+       />
+      </div>
+      <div>
+       <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
+        Precio total de la cancha <span className="text-f-muted font-normal normal-case">(opcional)</span>
+       </label>
+       <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-f-muted font-bold text-base">$</span>
+        <input
+         type="number"
+         min="0"
+         value={precioTotalCancha}
+         onChange={e => setPrecioTotalCancha(e.target.value)}
+         placeholder="0"
+         className="w-full bg-f-card border border-f-border rounded-xl pl-8 pr-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
+        />
+       </div>
+       {precioNum > 0 && (
+        <p className="text-f-muted text-xs mt-1.5">
+         Cada jugador pagaría{' '}
+         <span className="text-f-accent font-bold">${precioPorJugador.toLocaleString('es-UY')}</span>
+         {' '}({cupoTotal} jugadores)
+        </p>
+       )}
+      </div>
+     </>
+    )}
 
-    {/* Barrio */}
-    <div>
-     <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
-      Barrio <span className="text-f-muted font-normal normal-case">(opcional)</span>
-     </label>
-     <input
-      type="text"
-      value={barrio}
-      onChange={e => setBarrio(e.target.value)}
-      placeholder="Ej: Pocitos, Tres Cruces..."
-      className="w-full bg-f-card border border-f-border rounded-xl px-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
-     />
-    </div>
+    {/* ===== PÁDEL: lista de canchas por barrio ===== */}
+    {deporte === 'padel' && (
+     <div>
+      <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
+       Cancha de pádel
+      </label>
 
-    {/* Precio total de la cancha */}
-    <div>
-     <label className="text-f-muted text-sm font-bold uppercase tracking-wider block mb-2">
-      Precio total de la cancha <span className="text-f-muted font-normal normal-case">(opcional)</span>
-     </label>
-     <div className="relative">
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-f-muted font-bold text-base">$</span>
-      <input
-       type="number"
-       min="0"
-       value={precioTotalCancha}
-       onChange={e => setPrecioTotalCancha(e.target.value)}
-       placeholder="0"
-       className="w-full bg-f-card border border-f-border rounded-xl pl-8 pr-4 py-3 text-white text-base font-medium placeholder:text-f-muted focus:outline-none focus:border-f-accent transition-colors"
-      />
+      {!canchaIdPadel ? (
+       <>
+        <button onClick={() => setMostrarListaPadel(v => !v)}
+         className="w-full border-2 border-dashed border-f-border rounded-xl py-5
+         text-f-muted text-base font-bold flex flex-col items-center gap-1">
+         <span className="text-2xl"></span>
+         Elegir cancha de pádel
+        </button>
+
+        {mostrarListaPadel && (
+         <div className="mt-2 bg-f-card border border-f-border rounded-xl overflow-hidden">
+          {canchasPadelFiltradas.length === 0 ? (
+           <p className="text-f-muted text-sm text-center py-6">No hay canchas disponibles en {ciudad}.</p>
+          ) : (
+           Object.entries(canchasPorBarrioPadel).map(([barrioPadel, canchas]) => (
+            <div key={barrioPadel}>
+             <p className="text-f-muted text-xs font-black uppercase tracking-widest px-4 py-2 border-b border-f-border"
+              style={{ background: 'rgba(0,0,0,0.3)' }}>
+              {barrioPadel}
+             </p>
+             {canchas.map(c => (
+              <button key={c.id}
+               onClick={() => { setCanchaIdPadel(c.id); setMostrarListaPadel(false); }}
+               className="w-full text-left px-4 py-3 border-b border-f-border last:border-b-0
+               flex justify-between items-center active:bg-f-bg transition-colors">
+               <p className="text-white font-bold">{c.nombre}</p>
+               <span className="text-f-accent font-bold text-sm flex-shrink-0 ml-2">
+                ${c.precioPorHora.toLocaleString('es-UY')}/h
+               </span>
+              </button>
+             ))}
+            </div>
+           ))
+          )}
+         </div>
+        )}
+       </>
+      ) : (
+       <div className="bg-f-card border border-f-accent rounded-xl p-4 flex justify-between items-center">
+        <div>
+         <p className="text-white text-lg font-bold">{canchaSelecPadel?.nombre}</p>
+         <p className="text-f-muted text-sm">{canchaSelecPadel?.barrio} · ${canchaSelecPadel?.precioPorHora?.toLocaleString('es-UY')}/h</p>
+         <p className="text-f-muted text-xs mt-0.5">
+          Precio por jugador: <span className="text-f-accent font-bold">${precioPadelPorJugador.toLocaleString('es-UY')}</span>
+         </p>
+        </div>
+        <button onClick={() => setCanchaIdPadel('')}
+         className="text-f-muted text-sm underline flex-shrink-0 ml-3">
+         Cambiar
+        </button>
+       </div>
+      )}
      </div>
-     {precioNum > 0 && (
-      <p className="text-f-muted text-xs mt-1.5">
-       Cada jugador pagaría{' '}
-       <span className="text-f-accent font-bold">${precioPorJugador.toLocaleString('es-UY')}</span>
-       {' '}({cupoTotal} jugadores)
-      </p>
-     )}
-    </div>
+    )}
 
     {/* Fecha */}
     <div>
@@ -410,16 +514,22 @@ export default function CrearScreen({ setTab }) {
     </div>
 
     {/* Resumen */}
-    {nombreCancha.trim() && horario && (
+    {((deporte === 'futbol' && nombreCancha.trim()) || (deporte === 'padel' && canchaIdPadel)) && horario && (
      <div className="bg-sky-950 border border-f-green rounded-xl p-4 animate-fade-in">
       <p className="text-f-accent text-base font-bold uppercase mb-2">Resumen del partido</p>
       <div className="space-y-1 text-f-text text-base">
-       <p> {nombreCancha.trim()}{barrio.trim() ? ` — ${barrio.trim()}` : ''}</p>
+       {deporte === 'futbol' ? (
+        <p> {nombreCancha.trim()}{barrio.trim() ? ` — ${barrio.trim()}` : ''}</p>
+       ) : (
+        <p> {canchaSelecPadel?.nombre} — {canchaSelecPadel?.barrio}</p>
+       )}
        <p>{deporte === 'padel' ? ' Pádel' : ` ${modalidadFinal}`} · {nivel}</p>
        <p> {OPCIONES_FECHA[fecha]?.label} a las {horario}hs</p>
        <p> {cupoTotal} jugadores</p>
-       {precioNum > 0 && (
-        <p> ${precioPorJugador.toLocaleString('es-UY')} por jugador (en efectivo)</p>
+       {((deporte === 'futbol' && precioNum > 0) || deporte === 'padel') && (
+        <p>
+         ${(deporte === 'padel' ? precioPadelPorJugador : precioPorJugador).toLocaleString('es-UY')} por jugador (en efectivo)
+        </p>
        )}
       </div>
      </div>
@@ -433,7 +543,11 @@ export default function CrearScreen({ setTab }) {
 
     {/* Botón publicar */}
     <button onClick={handlePublicar}
-     disabled={!nombreCancha.trim() || !horario}
+     disabled={
+      !horario ||
+      (deporte === 'futbol' && !nombreCancha.trim()) ||
+      (deporte === 'padel' && !canchaIdPadel)
+     }
      className="w-full bg-f-green text-white font-black text-2xl uppercase
      py-5 rounded-2xl transition-all active:scale-95
      disabled:opacity-40 disabled:cursor-not-allowed"
