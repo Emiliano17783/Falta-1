@@ -61,6 +61,9 @@ export default function App() {
  const [proximoPartido, setProximoPartido] = useState(null);
  const misPartidosRef = useRef([]);
  const estadosAnteriores = useRef({});
+ const prevConvNoLeidos = useRef({});
+ const isFirstConvLoad = useRef(true);
+ const locationRef = useRef(location.pathname);
 
  const tab = PATH_TO_TAB[location.pathname] || 'inicio';
 
@@ -169,10 +172,38 @@ export default function App() {
  }, [user]);
 
  useEffect(() => {
+  locationRef.current = location.pathname;
+ }, [location.pathname]);
+
+ useEffect(() => {
   if (!user?.uid) { setMensajesNoLeidos(0); return; }
+  isFirstConvLoad.current = true;
+  prevConvNoLeidos.current = {};
   return suscribirConversaciones(user.uid, (convs) => {
    const total = convs.reduce((sum, c) => sum + (c.noLeidos?.[user.uid] || 0), 0);
    setMensajesNoLeidos(total);
+
+   if (!isFirstConvLoad.current && locationRef.current !== '/mensajes') {
+    for (const conv of convs) {
+     const prev = prevConvNoLeidos.current[conv.id];
+     const curr = conv.noLeidos?.[user.uid] || 0;
+     if (prev !== undefined && curr > prev && !conv.silenciados?.[user.uid]) {
+      const otroUid = conv.participantes?.find(p => p !== user.uid);
+      const nombre = conv.nombres?.[otroUid] || 'Jugador';
+      const preview = conv.ultimoMensaje
+       ? (conv.ultimoMensaje.length > 45 ? conv.ultimoMensaje.slice(0, 45) + '…' : conv.ultimoMensaje)
+       : '';
+      setToastGlobal(`${nombre}: ${preview}`);
+      setTimeout(() => setToastGlobal(null), 5000);
+      break;
+     }
+    }
+   }
+
+   convs.forEach(conv => {
+    prevConvNoLeidos.current[conv.id] = conv.noLeidos?.[user.uid] || 0;
+   });
+   isFirstConvLoad.current = false;
   });
  }, [user?.uid]);
 

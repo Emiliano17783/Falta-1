@@ -1000,6 +1000,8 @@ export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
    ultimoMensaje: texto,
    ultimaFecha: serverTimestamp(),
    [`noLeidos.${uid2}`]: increment(1),
+   [`ocultosPara.${uid1}`]: false,
+   [`ocultosPara.${uid2}`]: false,
   });
  }
  await addDoc(collection(db, 'conversaciones', convId, 'mensajes'), {
@@ -1012,6 +1014,18 @@ export async function enviarMensajeDirecto(uid1, uid2, texto, nombre1, foto1) {
 export async function marcarConversacionLeida(convId, uid) {
  try {
   await updateDoc(doc(db, 'conversaciones', convId), { [`noLeidos.${uid}`]: 0 });
+ } catch {}
+}
+
+export async function silenciarConversacion(convId, uid, silenciar) {
+ try {
+  await updateDoc(doc(db, 'conversaciones', convId), { [`silenciados.${uid}`]: silenciar });
+ } catch {}
+}
+
+export async function ocultarConversacion(convId, uid) {
+ try {
+  await updateDoc(doc(db, 'conversaciones', convId), { [`ocultosPara.${uid}`]: true });
  } catch {}
 }
 

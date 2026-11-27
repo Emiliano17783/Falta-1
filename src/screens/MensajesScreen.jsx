@@ -6,7 +6,83 @@ import {
  suscribirMensajesDirectos,
  enviarMensajeDirecto,
  marcarConversacionLeida,
+ bloquearJugador,
+ silenciarConversacion,
+ ocultarConversacion,
 } from '../firebase/firestore';
+
+// ── Context menu de conversación ───────────────────────────────────────────────
+function ContextMenuConv({ data, uid, onClose }) {
+ const { conv, x, y } = data;
+ const isMuted = !!conv.silenciados?.[uid];
+ const otroUid = conv.participantes?.find(p => p !== uid);
+ const isMobile = x === undefined;
+
+ const handleMute = async () => {
+  await silenciarConversacion(conv.id, uid, !isMuted);
+  onClose();
+ };
+
+ const handleHide = async () => {
+  await ocultarConversacion(conv.id, uid);
+  onClose();
+ };
+
+ const handleBlock = async () => {
+  if (otroUid) await bloquearJugador(uid, otroUid);
+  await ocultarConversacion(conv.id, uid);
+  onClose();
+ };
+
+ const menuStyle = isMobile
+  ? { bottom: 32, left: 16, right: 16 }
+  : {
+   top: Math.min(y, (typeof window !== 'undefined' ? window.innerHeight : 800) - 170),
+   left: Math.min(x, (typeof window !== 'undefined' ? window.innerWidth : 400) - 230),
+   minWidth: 220,
+  };
+
+ return (
+  <div className="fixed inset-0 z-50" onClick={onClose}
+   style={{ background: 'rgba(0,0,0,0.5)' }}>
+   <div className="absolute bg-f-card border border-f-border rounded-2xl overflow-hidden shadow-2xl"
+    style={menuStyle}
+    onClick={e => e.stopPropagation()}>
+
+    <button onClick={handleMute}
+     className="w-full flex items-center gap-3 px-5 py-4 text-left border-b active:bg-white/5 transition-colors"
+     style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-f-muted flex-shrink-0">
+      {isMuted
+       ? <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.93 6 11v5l-2 2v1h16v-1l-2-2z"/>
+       : <path d="M20 18.69L7.84 6.14 5.27 3.49 4 4.76l2.8 2.8v.01c-.52.99-.8 2.16-.8 3.42v5l-2 2v1h13.73l2 2L21 19.72l-1-1.03zM12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-7.32V11c0-3.08-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-.15.03-.29.08-.43.12L18 11.68v3z"/>
+      }
+     </svg>
+     <span className="font-bold text-sm text-white">
+      {isMuted ? 'Activar notificaciones' : 'Silenciar conversación'}
+     </span>
+    </button>
+
+    <button onClick={handleHide}
+     className="w-full flex items-center gap-3 px-5 py-4 text-left border-b active:bg-white/5 transition-colors"
+     style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-f-muted flex-shrink-0">
+      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+     </svg>
+     <span className="font-bold text-sm text-white">Eliminar chat</span>
+    </button>
+
+    <button onClick={handleBlock}
+     className="w-full flex items-center gap-3 px-5 py-4 text-left active:bg-white/5 transition-colors">
+     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="text-red-400 flex-shrink-0">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
+     </svg>
+     <span className="font-bold text-sm text-red-400">Bloquear usuario</span>
+    </button>
+   </div>
+  </div>
+ );
+}
 
 // ── Chat individual ────────────────────────────────────────────────────────────
 function Conversacion({ conv, uid, perfil, onBack }) {
@@ -117,6 +193,9 @@ export default function MensajesScreen() {
  const [resultados, setResultados] = useState([]);
  const [buscando, setBuscando] = useState(false);
  const [buscado, setBuscado] = useState(false);
+ const [contextMenu, setContextMenu] = useState(null);
+ const longPressTimer = useRef(null);
+ const longPressOccurred = useRef(false);
 
  useEffect(() => {
   if (!uid) return;
@@ -160,6 +239,35 @@ export default function MensajesScreen() {
   setVista('chat');
  };
 
+ const startLongPress = (conv) => {
+  longPressOccurred.current = false;
+  longPressTimer.current = setTimeout(() => {
+   longPressOccurred.current = true;
+   setContextMenu({ conv });
+  }, 500);
+ };
+
+ const cancelLongPress = () => {
+  clearTimeout(longPressTimer.current);
+  longPressTimer.current = null;
+ };
+
+ const handleConvClick = (conv) => {
+  if (longPressOccurred.current) {
+   longPressOccurred.current = false;
+   return;
+  }
+  abrirConvExistente(conv);
+ };
+
+ const handleConvContextMenu = (e, conv) => {
+  e.preventDefault();
+  cancelLongPress();
+  setContextMenu({ conv, x: e.clientX, y: e.clientY });
+ };
+
+ const convsVisibles = convs?.filter(c => !c.ocultosPara?.[uid]);
+
  if (vista === 'chat' && convActiva) {
   return <Conversacion conv={convActiva} uid={uid} perfil={perfil}
    onBack={() => setVista('main')} />;
@@ -167,6 +275,14 @@ export default function MensajesScreen() {
 
  return (
   <div className="min-h-svh bg-f-bg pb-28">
+
+   {contextMenu && (
+    <ContextMenuConv
+     data={contextMenu}
+     uid={uid}
+     onClose={() => setContextMenu(null)}
+    />
+   )}
 
    {/* Header */}
    <div className="px-5 pt-10 pb-4">
@@ -238,7 +354,7 @@ export default function MensajesScreen() {
       <div className="flex justify-center py-16">
        <div className="w-8 h-8 rounded-full border-2 border-f-accent border-t-transparent animate-spin" />
       </div>
-     ) : convs.length === 0 ? (
+     ) : convsVisibles.length === 0 ? (
       <div className="text-center py-16 px-8">
        <p className="text-4xl mb-3">💬</p>
        <p className="text-white font-bold text-base mb-1">Sin conversaciones</p>
@@ -246,15 +362,21 @@ export default function MensajesScreen() {
       </div>
      ) : (
       <div className="border-t border-f-border">
-       {convs.map(conv => {
+       {convsVisibles.map(conv => {
         const otroUid = conv.participantes?.find(p => p !== uid);
         const nombre = conv.nombres?.[otroUid] || 'Jugador';
         const foto = conv.fotos?.[otroUid];
         const ultimo = conv.ultimoMensaje || '';
         const fecha = conv.ultimaFecha?.toDate?.();
         const noLeidos = conv.noLeidos?.[uid] || 0;
+        const isMuted = !!conv.silenciados?.[uid];
         return (
-         <button key={conv.id} onClick={() => abrirConvExistente(conv)}
+         <button key={conv.id}
+          onClick={() => handleConvClick(conv)}
+          onContextMenu={(e) => handleConvContextMenu(e, conv)}
+          onTouchStart={() => startLongPress(conv)}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
           className="w-full flex items-center gap-4 px-5 py-4 border-b active:bg-white/5 transition-colors text-left"
           style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="w-12 h-12 rounded-full bg-f-green flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -272,6 +394,11 @@ export default function MensajesScreen() {
             <span className="text-f-muted text-[10px]">
              {fecha.toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit' })}
             </span>
+           )}
+           {isMuted && (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-f-muted opacity-50">
+             <path d="M20 18.69L7.84 6.14 5.27 3.49 4 4.76l2.8 2.8v.01c-.52.99-.8 2.16-.8 3.42v5l-2 2v1h13.73l2 2L21 19.72l-1-1.03zM12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-7.32V11c0-3.08-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68c-.15.03-.29.08-.43.12L18 11.68v3z"/>
+            </svg>
            )}
            {noLeidos > 0 && (
             <span className="rounded-full flex items-center justify-center text-white font-black"
